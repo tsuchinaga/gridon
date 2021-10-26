@@ -1,0 +1,8 @@
+*.iml
+.idea
+
+cover.out
+*.exe
+*.log
+*.db
+builds
