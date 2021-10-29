@@ -15,6 +15,21 @@ import (
 	"gitlab.com/tsuchinaga/kabus-grpc-server/kabuspb"
 )
 
+type testKabusAPI struct {
+	IKabusAPI
+	GetOrders1       []SecurityOrder
+	GetOrders2       error
+	GetOrdersCount   int
+	GetOrdersHistory []interface{}
+}
+
+func (t *testKabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error) {
+	t.GetOrdersHistory = append(t.GetOrdersHistory, product)
+	t.GetOrdersHistory = append(t.GetOrdersHistory, updateDateTime)
+	t.GetOrdersCount++
+	return t.GetOrders1, t.GetOrders2
+}
+
 type testKabusServiceClient struct {
 	GetBoard1  *kabuspb.Board
 	GetBoard2  error
@@ -447,7 +462,6 @@ func Test_kabusAPI_securityOrderFrom(t *testing.T) {
 				ContractDateTime: time.Time{},
 				CancelDateTime:   time.Time{},
 				Contracts:        []Contract{},
-				Commission:       0,
 			}},
 		{name: "部分約定した注文を変換できる",
 			arg1: kabuspb.Product_PRODUCT_MARGIN,
@@ -494,8 +508,7 @@ func Test_kabusAPI_securityOrderFrom(t *testing.T) {
 				CancelDateTime:   time.Time{},
 				Contracts: []Contract{
 					{OrderCode: "20211022A02N21800824", PositionCode: "E2021102200BJ6", Price: 2048, Quantity: 2, ContractDateTime: time.Date(2021, 10, 22, 9, 1, 25, 534000000, time.Local)},
-				},
-				Commission: 0}},
+				}}},
 		{name: "約定した注文を変換できる",
 			arg1: kabuspb.Product_PRODUCT_STOCK,
 			arg2: &kabuspb.Order{
@@ -543,9 +556,7 @@ func Test_kabusAPI_securityOrderFrom(t *testing.T) {
 					{OrderCode: "20211022A02N21800824", PositionCode: "E2021102200BJ6", Price: 2048, Quantity: 1, ContractDateTime: time.Date(2021, 10, 22, 9, 1, 25, 534000000, time.Local)},
 					{OrderCode: "20211022A02N21800824", PositionCode: "E2021102200GSG", Price: 2048, Quantity: 2, ContractDateTime: time.Date(2021, 10, 22, 9, 6, 26, 575000000, time.Local)},
 					{OrderCode: "20211022A02N21800824", PositionCode: "E2021102200QR3", Price: 2048, Quantity: 1, ContractDateTime: time.Date(2021, 10, 22, 9, 18, 50, 190000000, time.Local)},
-				},
-				Commission: 0,
-			}},
+				}}},
 		{name: "取消した注文を変換できる",
 			arg1: kabuspb.Product_PRODUCT_STOCK,
 			arg2: &kabuspb.Order{
@@ -589,7 +600,6 @@ func Test_kabusAPI_securityOrderFrom(t *testing.T) {
 				ContractDateTime: time.Time{},
 				CancelDateTime:   time.Date(2021, 10, 22, 10, 0, 53, 160000000, time.Local),
 				Contracts:        []Contract{},
-				Commission:       0,
 			}},
 		{name: "有効期限切れになった注文を変換できる",
 			arg1: kabuspb.Product_PRODUCT_MARGIN,
@@ -638,7 +648,6 @@ func Test_kabusAPI_securityOrderFrom(t *testing.T) {
 				ContractDateTime: time.Time{},
 				CancelDateTime:   time.Date(2021, 10, 22, 15, 46, 8, 843006600, time.Local),
 				Contracts:        []Contract{},
-				Commission:       0,
 			}},
 		{name: "後場後の失効待ちの注文を変換できる",
 			arg1: kabuspb.Product_PRODUCT_STOCK,
@@ -682,7 +691,6 @@ func Test_kabusAPI_securityOrderFrom(t *testing.T) {
 				ContractDateTime: time.Time{},
 				CancelDateTime:   time.Time{},
 				Contracts:        []Contract{},
-				Commission:       0,
 			}},
 	}
 
@@ -792,7 +800,6 @@ func Test_kabusAPI_GetOrders(t *testing.T) {
 						{OrderCode: "20211022A02N21800824", PositionCode: "E2021102200GSG", Price: 2048, Quantity: 2, ContractDateTime: time.Date(2021, 10, 22, 9, 6, 26, 575000000, time.Local)},
 						{OrderCode: "20211022A02N21800824", PositionCode: "E2021102200QR3", Price: 2048, Quantity: 1, ContractDateTime: time.Date(2021, 10, 22, 9, 18, 50, 190000000, time.Local)},
 					},
-					Commission: 0,
 				}, {
 					Code:             "20211022A02N21800958",
 					Status:           OrderStatusCanceled,

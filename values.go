@@ -31,14 +31,26 @@ type SecurityOrder struct {
 	ContractDateTime time.Time       // 約定日時
 	CancelDateTime   time.Time       // 取消日時
 	Contracts        []Contract      // 約定
-	Commission       float64         // 手数料
 }
 
 // Contract - 約定
 type Contract struct {
 	OrderCode        string    // 注文コード
-	PositionCode     string    // ポジションコード (エントリーなら建ったポジション、エグジットならエグジットしたポジション)
+	PositionCode     string    // ポジションコード (市場の約定のコードなので、同じポジションのエントリーとエグジットでもコードは一致しない)
 	Price            float64   // 約定値
 	Quantity         float64   // 約定数量
 	ContractDateTime time.Time // 約定日時
+}
+
+// HoldPosition - 拘束ポジション
+type HoldPosition struct {
+	PositionCode     string  // ポジションコード
+	HoldQuantity     float64 // 拘束した数量
+	ContractQuantity float64 // 約定した数量
+	ReleaseQuantity  float64 // 解放した数量
+}
+
+// LeaveQuantity - 残量
+func (v *HoldPosition) LeaveQuantity() float64 {
+	return v.HoldQuantity - v.ContractQuantity - v.ReleaseQuantity
 }

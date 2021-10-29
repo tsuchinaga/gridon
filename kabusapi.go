@@ -12,6 +12,7 @@ import (
 // IKabusAPI - kabuステーションAPIのインターフェース
 type IKabusAPI interface {
 	GetSymbol(symbolCode string, exchange Exchange) (*Symbol, error)
+	GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error)
 }
 
 // kabusAPI - kabuステーションAPI
@@ -152,15 +153,13 @@ func (k *kabusAPI) contractFrom(orderCode string, detail *kabuspb.OrderDetail) C
 func (k *kabusAPI) securityOrderFrom(product kabuspb.Product, order *kabuspb.Order) SecurityOrder {
 	var lastRecordType kabuspb.RecordType
 	var contractDateTime, cancelDateTime time.Time
-	var commission float64
 	contracts := make([]Contract, 0)
 	for _, d := range order.Details {
 		// 処理済みの詳細でなければ無視する
 		if d.State != kabuspb.OrderDetailState_ORDER_DETAIL_STATE_PROCESSED {
 			continue
 		}
-		lastRecordType = d.RecordType                // 最終レコード種別
-		commission += d.Commission + d.CommissionTax // 注文手数料
+		lastRecordType = d.RecordType // 最終レコード種別
 
 		switch d.RecordType {
 		case kabuspb.RecordType_RECORD_TYPE_EXPIRED, kabuspb.RecordType_RECORD_TYPE_CANCELED, kabuspb.RecordType_RECORD_TYPE_REVOCATION:
@@ -189,7 +188,6 @@ func (k *kabusAPI) securityOrderFrom(product kabuspb.Product, order *kabuspb.Ord
 		ContractDateTime: contractDateTime,
 		CancelDateTime:   cancelDateTime,
 		Contracts:        contracts,
-		Commission:       commission,
 	}
 }
 
