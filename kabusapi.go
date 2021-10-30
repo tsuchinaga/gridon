@@ -13,6 +13,7 @@ import (
 type IKabusAPI interface {
 	GetSymbol(symbolCode string, exchange Exchange) (*Symbol, error)
 	GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error)
+	CancelOrder(orderPassword string, orderCode string) (OrderResult, error)
 }
 
 // kabusAPI - kabuステーションAPI
@@ -211,6 +212,7 @@ func (k *kabusAPI) GetSymbol(symbolCode string, exchange Exchange) (*Symbol, err
 	}, nil
 }
 
+// GetOrders - 注文一覧の取得
 func (k *kabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error) {
 	kabusProduct := k.productTo(product)
 	res, err := k.kabucom.GetOrders(context.Background(), &kabuspb.GetOrdersRequest{
@@ -227,4 +229,13 @@ func (k *kabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]Secur
 		result = append(result, k.securityOrderFrom(kabusProduct, o))
 	}
 	return result, nil
+}
+
+// CancelOrder - 注文の取消
+func (k *kabusAPI) CancelOrder(orderPassword string, orderCode string) (OrderResult, error) {
+	res, err := k.kabucom.CancelOrder(context.Background(), &kabuspb.CancelOrderRequest{Password: orderPassword, OrderId: orderCode})
+	if err != nil {
+		return OrderResult{}, err
+	}
+	return OrderResult{Result: res.ResultCode == 0, ResultCode: int(res.ResultCode)}, nil
 }

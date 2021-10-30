@@ -17,10 +17,13 @@ import (
 
 type testKabusAPI struct {
 	IKabusAPI
-	GetOrders1       []SecurityOrder
-	GetOrders2       error
-	GetOrdersCount   int
-	GetOrdersHistory []interface{}
+	GetOrders1         []SecurityOrder
+	GetOrders2         error
+	GetOrdersCount     int
+	GetOrdersHistory   []interface{}
+	CancelOrder1       OrderResult
+	CancelOrder2       error
+	CancelOrderHistory []interface{}
 }
 
 func (t *testKabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error) {
@@ -29,14 +32,22 @@ func (t *testKabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]S
 	t.GetOrdersCount++
 	return t.GetOrders1, t.GetOrders2
 }
+func (t *testKabusAPI) CancelOrder(orderPassword string, orderCode string) (OrderResult, error) {
+	t.CancelOrderHistory = append(t.CancelOrderHistory, orderPassword)
+	t.CancelOrderHistory = append(t.CancelOrderHistory, orderCode)
+	return t.CancelOrder1, t.CancelOrder2
+}
 
 type testKabusServiceClient struct {
-	GetBoard1  *kabuspb.Board
-	GetBoard2  error
-	GetSymbol1 *kabuspb.Symbol
-	GetSymbol2 error
-	GetOrders1 *kabuspb.Orders
-	GetOrders2 error
+	GetBoard1          *kabuspb.Board
+	GetBoard2          error
+	GetSymbol1         *kabuspb.Symbol
+	GetSymbol2         error
+	GetOrders1         *kabuspb.Orders
+	GetOrders2         error
+	CancelOrder1       *kabuspb.OrderResponse
+	CancelOrder2       error
+	CancelOrderHistory []interface{}
 	kabuspb.KabusServiceClient
 }
 
@@ -48,6 +59,10 @@ func (t *testKabusServiceClient) GetSymbol(context.Context, *kabuspb.GetSymbolRe
 }
 func (t *testKabusServiceClient) GetOrders(context.Context, *kabuspb.GetOrdersRequest, ...grpc.CallOption) (*kabuspb.Orders, error) {
 	return t.GetOrders1, t.GetOrders2
+}
+func (t *testKabusServiceClient) CancelOrder(_ context.Context, in *kabuspb.CancelOrderRequest, _ ...grpc.CallOption) (*kabuspb.OrderResponse, error) {
+	t.CancelOrderHistory = append(t.CancelOrderHistory, in)
+	return t.CancelOrder1, t.CancelOrder2
 }
 
 func Test_kabusAPI_exchangeTo(t *testing.T) {
@@ -858,4 +873,53 @@ func Test_kabusAPI_GetOrders_Execute(t *testing.T) {
 	kabusAPI := &kabusAPI{kabucom: kabuspb.NewKabusServiceClient(conn)}
 	orders, err := kabusAPI.GetOrders(ProductMargin, time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local))
 	t.Logf("orders: %+v, err: %+v\n", orders, err)
+}
+
+func Test_kabusAPI_CancelOrder(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                   string
+		kabusServiceClient     *testKabusServiceClient
+		arg1                   string
+		arg2                   string
+		want1                  OrderResult
+		want2                  error
+		wantCancelOrderHistory []interface{}
+	}{
+		{name: "取消注文に失敗したらエラー",
+			kabusServiceClient:     &testKabusServiceClient{CancelOrder2: ErrUnknown},
+			arg1:                   "Password1234",
+			arg2:                   "order-code-001",
+			want1:                  OrderResult{},
+			want2:                  ErrUnknown,
+			wantCancelOrderHistory: []interface{}{&kabuspb.CancelOrderRequest{Password: "Password1234", OrderId: "order-code-001", IsVirtual: false}}},
+		{name: "取消注文の結果を詰めて返す",
+			kabusServiceClient:     &testKabusServiceClient{CancelOrder1: &kabuspb.OrderResponse{ResultCode: 0, OrderId: "cancel-order-code"}},
+			arg1:                   "Password1234",
+			arg2:                   "order-code-001",
+			want1:                  OrderResult{Result: true, ResultCode: 0},
+			want2:                  nil,
+			wantCancelOrderHistory: []interface{}{&kabuspb.CancelOrderRequest{Password: "Password1234", OrderId: "order-code-001", IsVirtual: false}}},
+		{name: "実行結果がエラーならresultがfalseになる",
+			kabusServiceClient:     &testKabusServiceClient{CancelOrder1: &kabuspb.OrderResponse{ResultCode: -1, OrderId: "cancel-order-code"}},
+			arg1:                   "Password1234",
+			arg2:                   "order-code-001",
+			want1:                  OrderResult{Result: false, ResultCode: -1},
+			want2:                  nil,
+			wantCancelOrderHistory: []interface{}{&kabuspb.CancelOrderRequest{Password: "Password1234", OrderId: "order-code-001", IsVirtual: false}}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabusAPI := &kabusAPI{kabucom: test.kabusServiceClient}
+			got1, got2 := kabusAPI.CancelOrder(test.arg1, test.arg2)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) || !reflect.DeepEqual(test.wantCancelOrderHistory, test.kabusServiceClient.CancelOrderHistory) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.want2, test.wantCancelOrderHistory,
+					got1, got2, test.kabusServiceClient.CancelOrderHistory)
+			}
+		})
+	}
 }

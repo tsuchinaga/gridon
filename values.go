@@ -54,3 +54,15 @@ type HoldPosition struct {
 func (v *HoldPosition) LeaveQuantity() float64 {
 	return v.HoldQuantity - v.ContractQuantity - v.ReleaseQuantity
 }
+
+// OrderResult - 注文結果
+type OrderResult struct {
+	Result     bool // 結果
+	ResultCode int  // 結果コード
+}
+
+// Account - 口座情報
+type Account struct {
+	Password    string      // 注文パスワード
+	AccountType AccountType // 口座種別
+}
