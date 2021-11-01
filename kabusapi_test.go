@@ -24,6 +24,10 @@ type testKabusAPI struct {
 	CancelOrder1       OrderResult
 	CancelOrder2       error
 	CancelOrderHistory []interface{}
+	SendOrder1         OrderResult
+	SendOrder2         error
+	SendOrderCount     int
+	SendOrderHistory   []interface{}
 }
 
 func (t *testKabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error) {
@@ -37,17 +41,29 @@ func (t *testKabusAPI) CancelOrder(orderPassword string, orderCode string) (Orde
 	t.CancelOrderHistory = append(t.CancelOrderHistory, orderCode)
 	return t.CancelOrder1, t.CancelOrder2
 }
+func (t *testKabusAPI) SendOrder(strategy *Strategy, order *Order) (OrderResult, error) {
+	t.SendOrderHistory = append(t.SendOrderHistory, strategy)
+	t.SendOrderHistory = append(t.SendOrderHistory, order)
+	t.SendOrderCount++
+	return t.SendOrder1, t.SendOrder2
+}
 
 type testKabusServiceClient struct {
-	GetBoard1          *kabuspb.Board
-	GetBoard2          error
-	GetSymbol1         *kabuspb.Symbol
-	GetSymbol2         error
-	GetOrders1         *kabuspb.Orders
-	GetOrders2         error
-	CancelOrder1       *kabuspb.OrderResponse
-	CancelOrder2       error
-	CancelOrderHistory []interface{}
+	GetBoard1              *kabuspb.Board
+	GetBoard2              error
+	GetSymbol1             *kabuspb.Symbol
+	GetSymbol2             error
+	GetOrders1             *kabuspb.Orders
+	GetOrders2             error
+	CancelOrder1           *kabuspb.OrderResponse
+	CancelOrder2           error
+	CancelOrderHistory     []interface{}
+	SendStockOrder1        *kabuspb.OrderResponse
+	SendStockOrder2        error
+	SendStockOrderHistory  []interface{}
+	SendMarginOrder1       *kabuspb.OrderResponse
+	SendMarginOrder2       error
+	SendMarginOrderHistory []interface{}
 	kabuspb.KabusServiceClient
 }
 
@@ -63,6 +79,14 @@ func (t *testKabusServiceClient) GetOrders(context.Context, *kabuspb.GetOrdersRe
 func (t *testKabusServiceClient) CancelOrder(_ context.Context, in *kabuspb.CancelOrderRequest, _ ...grpc.CallOption) (*kabuspb.OrderResponse, error) {
 	t.CancelOrderHistory = append(t.CancelOrderHistory, in)
 	return t.CancelOrder1, t.CancelOrder2
+}
+func (t *testKabusServiceClient) SendStockOrder(_ context.Context, in *kabuspb.SendStockOrderRequest, _ ...grpc.CallOption) (*kabuspb.OrderResponse, error) {
+	t.SendStockOrderHistory = append(t.SendStockOrderHistory, in)
+	return t.SendStockOrder1, t.SendStockOrder2
+}
+func (t *testKabusServiceClient) SendMarginOrder(_ context.Context, in *kabuspb.SendMarginOrderRequest, _ ...grpc.CallOption) (*kabuspb.OrderResponse, error) {
+	t.SendMarginOrderHistory = append(t.SendMarginOrderHistory, in)
+	return t.SendMarginOrder1, t.SendMarginOrder2
 }
 
 func Test_kabusAPI_exchangeTo(t *testing.T) {
@@ -897,14 +921,14 @@ func Test_kabusAPI_CancelOrder(t *testing.T) {
 			kabusServiceClient:     &testKabusServiceClient{CancelOrder1: &kabuspb.OrderResponse{ResultCode: 0, OrderId: "cancel-order-code"}},
 			arg1:                   "Password1234",
 			arg2:                   "order-code-001",
-			want1:                  OrderResult{Result: true, ResultCode: 0},
+			want1:                  OrderResult{Result: true, ResultCode: 0, OrderCode: "cancel-order-code"},
 			want2:                  nil,
 			wantCancelOrderHistory: []interface{}{&kabuspb.CancelOrderRequest{Password: "Password1234", OrderId: "order-code-001", IsVirtual: false}}},
 		{name: "実行結果がエラーならresultがfalseになる",
 			kabusServiceClient:     &testKabusServiceClient{CancelOrder1: &kabuspb.OrderResponse{ResultCode: -1, OrderId: "cancel-order-code"}},
 			arg1:                   "Password1234",
 			arg2:                   "order-code-001",
-			want1:                  OrderResult{Result: false, ResultCode: -1},
+			want1:                  OrderResult{Result: false, ResultCode: -1, OrderCode: "cancel-order-code"},
 			want2:                  nil,
 			wantCancelOrderHistory: []interface{}{&kabuspb.CancelOrderRequest{Password: "Password1234", OrderId: "order-code-001", IsVirtual: false}}},
 	}
@@ -919,6 +943,440 @@ func Test_kabusAPI_CancelOrder(t *testing.T) {
 				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
 					test.want1, test.want2, test.wantCancelOrderHistory,
 					got1, got2, test.kabusServiceClient.CancelOrderHistory)
+			}
+		})
+	}
+}
+
+func Test_kabusAPI_sideTo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 Side
+		want kabuspb.Side
+	}{
+		{name: "未指定 を変換できる", arg1: SideUnspecified, want: kabuspb.Side_SIDE_UNSPECIFIED},
+		{name: "買い を変換できる", arg1: SideBuy, want: kabuspb.Side_SIDE_BUY},
+		{name: "売り を変換できる", arg1: SideSell, want: kabuspb.Side_SIDE_SELL},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabus := &kabusAPI{}
+			got := kabus.sideTo(test.arg1)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_kabusAPI_accountTypeTo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 AccountType
+		want kabuspb.AccountType
+	}{
+		{name: "未指定 を変換できる", arg1: AccountTypeUnspecified, want: kabuspb.AccountType_ACCOUNT_TYPE_UNSPECIFIED},
+		{name: "一般 を変換できる", arg1: AccountTypeGeneral, want: kabuspb.AccountType_ACCOUNT_TYPE_GENERAL},
+		{name: "特定 を変換できる", arg1: AccountTypeSpecific, want: kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC},
+		{name: "法人 を変換できる", arg1: AccountTypeCorporation, want: kabuspb.AccountType_ACCOUNT_TYPE_CORPORATION},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabus := &kabusAPI{}
+			got := kabus.accountTypeTo(test.arg1)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_kabusAPI_orderTypeTo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 ExecutionType
+		want kabuspb.StockOrderType
+	}{
+		{name: "未指定 を変換できる", arg1: ExecutionTypeUnspecified, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_UNSPECIFIED},
+		{name: "成行 を変換できる", arg1: ExecutionTypeMarket, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO},
+		{name: "指値 を変換できる", arg1: ExecutionTypeLimit, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_LO},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabus := &kabusAPI{}
+			got := kabus.orderTypeTo(test.arg1)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_kabusAPI_tradeTypeTo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 TradeType
+		want kabuspb.TradeType
+	}{
+		{name: "未指定 を変換できる", arg1: TradeTypeUnspecified, want: kabuspb.TradeType_TRADE_TYPE_UNSPECIFIED},
+		{name: "エントリー を変換できる", arg1: TradeTypeEntry, want: kabuspb.TradeType_TRADE_TYPE_ENTRY},
+		{name: "エグジット を変換できる", arg1: TradeTypeExit, want: kabuspb.TradeType_TRADE_TYPE_EXIT},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabus := &kabusAPI{}
+			got := kabus.tradeTypeTo(test.arg1)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_kabusAPI_marginTradeTypeTo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 MarginTradeType
+		want kabuspb.MarginTradeType
+	}{
+		{name: "未指定 を変換できる", arg1: MarginTradeTypeUnspecified, want: kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_UNSPECIFIED},
+		{name: "制度 を変換できる", arg1: MarginTradeTypeSystem, want: kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_SYSTEM},
+		{name: "長期 を変換できる", arg1: MarginTradeTypeLong, want: kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_GENERAL_LONG},
+		{name: "デイトレ を変換できる", arg1: MarginTradeTypeDay, want: kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_GENERAL_DAY},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabus := &kabusAPI{}
+			got := kabus.marginTradeTypeTo(test.arg1)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_kabusAPI_closePositionsTo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 []HoldPosition
+		want []*kabuspb.ClosePosition
+	}{
+		{name: "nilならnilを返す", arg1: nil, want: nil},
+		{name: "空配列なら空配列を返す", arg1: []HoldPosition{}, want: []*kabuspb.ClosePosition{}},
+		{name: "要素があれば置き換えて返す", arg1: []HoldPosition{
+			{PositionCode: "POSITION-CODE-001", HoldQuantity: 100},
+			{PositionCode: "POSITION-CODE-002", HoldQuantity: 150},
+			{PositionCode: "POSITION-CODE-003", HoldQuantity: 300},
+		}, want: []*kabuspb.ClosePosition{
+			{ExecutionId: "POSITION-CODE-001", Quantity: 100},
+			{ExecutionId: "POSITION-CODE-002", Quantity: 150},
+			{ExecutionId: "POSITION-CODE-003", Quantity: 300},
+		}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabus := &kabusAPI{}
+			got := kabus.closePositionsTo(test.arg1)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_kabusAPI_SendOrder(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                       string
+		kabusServiceClient         *testKabusServiceClient
+		arg1                       *Strategy
+		arg2                       *Order
+		want1                      OrderResult
+		want2                      error
+		wantSendStockOrderHistory  []interface{}
+		wantSendMarginOrderHistory []interface{}
+	}{
+		{name: "strategyがnilならnil error",
+			kabusServiceClient: &testKabusServiceClient{},
+			arg1:               nil,
+			arg2:               &Order{},
+			want2:              ErrNilArgument},
+		{name: "orderがnilならnil error",
+			kabusServiceClient: &testKabusServiceClient{},
+			arg1:               &Strategy{},
+			arg2:               nil,
+			want2:              ErrNilArgument},
+		{name: "現物注文でエラーが出たらエラーを返す",
+			kabusServiceClient: &testKabusServiceClient{
+				SendStockOrder1: nil,
+				SendStockOrder2: ErrUnknown,
+			},
+			arg1: &Strategy{
+				Code:            "strategy-1475",
+				SymbolCode:      "1475",
+				Exchange:        ExchangeToushou,
+				Product:         ProductStock,
+				MarginTradeType: MarginTradeTypeUnspecified,
+				Account:         Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+			},
+			arg2: &Order{
+				StrategyCode:  "strategy-1475",
+				SymbolCode:    "1475",
+				Exchange:      ExchangeToushou,
+				Product:       ProductStock,
+				ExecutionType: ExecutionTypeMarket,
+				Side:          SideBuy,
+				TradeType:     TradeTypeEntry,
+				OrderQuantity: 5,
+				AccountType:   AccountTypeSpecific,
+			},
+			want2: ErrUnknown,
+			wantSendStockOrderHistory: []interface{}{&kabuspb.SendStockOrderRequest{
+				Password:     "Password1234",
+				SymbolCode:   "1475",
+				Exchange:     kabuspb.StockExchange_STOCK_EXCHANGE_TOUSHOU,
+				Side:         kabuspb.Side_SIDE_BUY,
+				DeliveryType: kabuspb.DeliveryType_DELIVERY_TYPE_CASH,
+				FundType:     kabuspb.FundType_FUND_TYPE_SUBSTITUTE_MARGIN,
+				AccountType:  kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC,
+				Quantity:     5,
+				OrderType:    kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO,
+			}}},
+		{name: "現物注文で注文に成功したら注文結果を返す",
+			kabusServiceClient: &testKabusServiceClient{
+				SendStockOrder1: &kabuspb.OrderResponse{ResultCode: 0, OrderId: "ORDER-ID-001"},
+			},
+			arg1: &Strategy{
+				Code:       "strategy-1475",
+				SymbolCode: "1475",
+				Exchange:   ExchangeToushou,
+				Product:    ProductStock,
+				Account:    Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+			},
+			arg2: &Order{
+				StrategyCode:  "strategy-1475",
+				SymbolCode:    "1475",
+				Exchange:      ExchangeToushou,
+				Product:       ProductStock,
+				ExecutionType: ExecutionTypeMarket,
+				Side:          SideBuy,
+				TradeType:     TradeTypeEntry,
+				OrderQuantity: 5,
+				AccountType:   AccountTypeSpecific,
+			},
+			want1: OrderResult{
+				Result:     true,
+				ResultCode: 0,
+				OrderCode:  "ORDER-ID-001",
+			},
+			wantSendStockOrderHistory: []interface{}{&kabuspb.SendStockOrderRequest{
+				Password:     "Password1234",
+				SymbolCode:   "1475",
+				Exchange:     kabuspb.StockExchange_STOCK_EXCHANGE_TOUSHOU,
+				Side:         kabuspb.Side_SIDE_BUY,
+				DeliveryType: kabuspb.DeliveryType_DELIVERY_TYPE_CASH,
+				FundType:     kabuspb.FundType_FUND_TYPE_SUBSTITUTE_MARGIN,
+				AccountType:  kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC,
+				Quantity:     5,
+				OrderType:    kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO,
+			}}},
+		{name: "現物注文で注文に失敗したら注文結果を返す",
+			kabusServiceClient: &testKabusServiceClient{
+				SendStockOrder1: &kabuspb.OrderResponse{ResultCode: 4, OrderId: ""},
+			},
+			arg1: &Strategy{
+				Code:       "strategy-1475",
+				SymbolCode: "1475",
+				Exchange:   ExchangeToushou,
+				Product:    ProductStock,
+				Account:    Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+			},
+			arg2: &Order{
+				StrategyCode:  "strategy-1475",
+				SymbolCode:    "1475",
+				Exchange:      ExchangeToushou,
+				Product:       ProductStock,
+				ExecutionType: ExecutionTypeMarket,
+				Side:          SideBuy,
+				TradeType:     TradeTypeEntry,
+				OrderQuantity: 5,
+				AccountType:   AccountTypeSpecific,
+			},
+			want1: OrderResult{
+				Result:     false,
+				ResultCode: 4,
+				OrderCode:  "",
+			},
+			wantSendStockOrderHistory: []interface{}{&kabuspb.SendStockOrderRequest{
+				Password:     "Password1234",
+				SymbolCode:   "1475",
+				Exchange:     kabuspb.StockExchange_STOCK_EXCHANGE_TOUSHOU,
+				Side:         kabuspb.Side_SIDE_BUY,
+				DeliveryType: kabuspb.DeliveryType_DELIVERY_TYPE_CASH,
+				FundType:     kabuspb.FundType_FUND_TYPE_SUBSTITUTE_MARGIN,
+				AccountType:  kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC,
+				Quantity:     5,
+				OrderType:    kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO,
+			}}},
+		{name: "信用注文でエラーが出たらエラーを返す",
+			kabusServiceClient: &testKabusServiceClient{
+				SendMarginOrder1: nil,
+				SendMarginOrder2: ErrUnknown,
+			},
+			arg1: &Strategy{
+				Code:            "strategy-1475",
+				SymbolCode:      "1475",
+				Exchange:        ExchangeToushou,
+				Product:         ProductMargin,
+				MarginTradeType: MarginTradeTypeDay,
+				Account:         Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+			},
+			arg2: &Order{
+				StrategyCode:    "strategy-1475",
+				SymbolCode:      "1475",
+				Exchange:        ExchangeToushou,
+				Product:         ProductMargin,
+				MarginTradeType: MarginTradeTypeDay,
+				ExecutionType:   ExecutionTypeMarket,
+				Side:            SideBuy,
+				TradeType:       TradeTypeEntry,
+				OrderQuantity:   5,
+				AccountType:     AccountTypeSpecific,
+			},
+			want2: ErrUnknown,
+			wantSendMarginOrderHistory: []interface{}{&kabuspb.SendMarginOrderRequest{
+				Password:        "Password1234",
+				SymbolCode:      "1475",
+				Exchange:        kabuspb.StockExchange_STOCK_EXCHANGE_TOUSHOU,
+				Side:            kabuspb.Side_SIDE_BUY,
+				TradeType:       kabuspb.TradeType_TRADE_TYPE_ENTRY,
+				MarginTradeType: kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_GENERAL_DAY,
+				DeliveryType:    kabuspb.DeliveryType_DELIVERY_TYPE_CASH,
+				AccountType:     kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC,
+				Quantity:        5,
+				OrderType:       kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO,
+			}}},
+		{name: "現物注文で注文に成功したら注文結果を返す",
+			kabusServiceClient: &testKabusServiceClient{
+				SendMarginOrder1: &kabuspb.OrderResponse{ResultCode: 0, OrderId: "ORDER-ID-001"},
+			},
+			arg1: &Strategy{
+				Code:            "strategy-1475",
+				SymbolCode:      "1475",
+				Exchange:        ExchangeToushou,
+				Product:         ProductMargin,
+				MarginTradeType: MarginTradeTypeDay,
+				Account:         Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+			},
+			arg2: &Order{
+				StrategyCode:    "strategy-1475",
+				SymbolCode:      "1475",
+				Exchange:        ExchangeToushou,
+				Product:         ProductMargin,
+				MarginTradeType: MarginTradeTypeDay,
+				ExecutionType:   ExecutionTypeMarket,
+				Side:            SideBuy,
+				TradeType:       TradeTypeEntry,
+				OrderQuantity:   5,
+				AccountType:     AccountTypeSpecific,
+			},
+			want1: OrderResult{
+				Result:     true,
+				ResultCode: 0,
+				OrderCode:  "ORDER-ID-001",
+			},
+			wantSendMarginOrderHistory: []interface{}{&kabuspb.SendMarginOrderRequest{
+				Password:        "Password1234",
+				SymbolCode:      "1475",
+				Exchange:        kabuspb.StockExchange_STOCK_EXCHANGE_TOUSHOU,
+				Side:            kabuspb.Side_SIDE_BUY,
+				TradeType:       kabuspb.TradeType_TRADE_TYPE_ENTRY,
+				MarginTradeType: kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_GENERAL_DAY,
+				DeliveryType:    kabuspb.DeliveryType_DELIVERY_TYPE_CASH,
+				AccountType:     kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC,
+				Quantity:        5,
+				OrderType:       kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO,
+			}}},
+		{name: "現物注文で注文に失敗したら注文結果を返す",
+			kabusServiceClient: &testKabusServiceClient{
+				SendMarginOrder1: &kabuspb.OrderResponse{ResultCode: 4, OrderId: ""},
+			},
+			arg1: &Strategy{
+				Code:            "strategy-1475",
+				SymbolCode:      "1475",
+				Exchange:        ExchangeToushou,
+				Product:         ProductMargin,
+				MarginTradeType: MarginTradeTypeDay,
+				Account:         Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+			},
+			arg2: &Order{
+				StrategyCode:    "strategy-1475",
+				SymbolCode:      "1475",
+				Exchange:        ExchangeToushou,
+				Product:         ProductMargin,
+				MarginTradeType: MarginTradeTypeDay,
+				ExecutionType:   ExecutionTypeMarket,
+				Side:            SideBuy,
+				TradeType:       TradeTypeEntry,
+				OrderQuantity:   5,
+				AccountType:     AccountTypeSpecific,
+			},
+			want1: OrderResult{
+				Result:     false,
+				ResultCode: 4,
+				OrderCode:  "",
+			},
+			wantSendMarginOrderHistory: []interface{}{&kabuspb.SendMarginOrderRequest{
+				Password:        "Password1234",
+				SymbolCode:      "1475",
+				Exchange:        kabuspb.StockExchange_STOCK_EXCHANGE_TOUSHOU,
+				Side:            kabuspb.Side_SIDE_BUY,
+				TradeType:       kabuspb.TradeType_TRADE_TYPE_ENTRY,
+				MarginTradeType: kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_GENERAL_DAY,
+				DeliveryType:    kabuspb.DeliveryType_DELIVERY_TYPE_CASH,
+				AccountType:     kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC,
+				Quantity:        5,
+				OrderType:       kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO,
+			}}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			api := &kabusAPI{kabucom: test.kabusServiceClient}
+			got1, got2 := api.SendOrder(test.arg1, test.arg2)
+			if !reflect.DeepEqual(test.want1, got1) ||
+				!errors.Is(got2, test.want2) ||
+				!reflect.DeepEqual(test.wantSendStockOrderHistory, test.kabusServiceClient.SendStockOrderHistory) ||
+				!reflect.DeepEqual(test.wantSendMarginOrderHistory, test.kabusServiceClient.SendMarginOrderHistory) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.want2, test.wantSendStockOrderHistory, test.wantSendMarginOrderHistory,
+					got1, got2, test.kabusServiceClient.SendStockOrderHistory, test.kabusServiceClient.SendMarginOrderHistory)
 			}
 		})
 	}

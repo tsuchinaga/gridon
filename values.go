@@ -57,8 +57,9 @@ func (v *HoldPosition) LeaveQuantity() float64 {
 
 // OrderResult - 注文結果
 type OrderResult struct {
-	Result     bool // 結果
-	ResultCode int  // 結果コード
+	Result     bool   // 結果
+	ResultCode int    // 結果コード
+	OrderCode  string // 注文コード
 }
 
 // Account - 口座情報

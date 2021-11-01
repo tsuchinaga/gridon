@@ -1,12 +1,17 @@
 package gridon
 
-import "sync"
+import (
+	"sort"
+	"sync"
+)
 
 // IPositionStore - ポジションストアのインターフェース
 type IPositionStore interface {
 	Save(position *Position) error
 	ExitContract(positionCode string, quantity float64) error
 	Release(positionCode string, quantity float64) error
+	GetActivePositionsByStrategyCode(strategyCode string) ([]*Position, error)
+	Hold(positionCode string, quantity float64) error
 }
 
 // positionStore - ポジションストア
@@ -49,6 +54,40 @@ func (s *positionStore) Release(positionCode string, quantity float64) error {
 
 	if _, ok := s.store[positionCode]; ok {
 		s.store[positionCode].HoldQuantity -= quantity
+	}
+
+	return nil
+}
+
+// GetActivePositionsByStrategyCode - 戦略を指定してポジションを取り出す
+func (s *positionStore) GetActivePositionsByStrategyCode(strategyCode string) ([]*Position, error) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	positions := make([]*Position, 0)
+	for _, p := range s.store {
+		// 戦略コードが違うか、無効なポジションだったらスキップ
+		if p.StrategyCode != strategyCode || !p.IsActive() {
+			continue
+		}
+		positions = append(positions, p)
+	}
+
+	// 約定日時で並び替え
+	sort.Slice(positions, func(i, j int) bool {
+		return positions[i].ContractDateTime.Before(positions[j].ContractDateTime)
+	})
+
+	return positions, nil
+}
+
+// Hold - 指定したポジションを拘束する
+func (s *positionStore) Hold(positionCode string, quantity float64) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	if _, ok := s.store[positionCode]; ok {
+		s.store[positionCode].HoldQuantity += quantity
 	}
 
 	return nil

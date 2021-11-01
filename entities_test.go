@@ -248,3 +248,50 @@ func Test_Order_ContractDiff(t *testing.T) {
 		})
 	}
 }
+
+func Test_Position_IsActive(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		position *Position
+		want1    bool
+	}{
+		{name: "保有数量が0ならfalse", position: &Position{OwnedQuantity: 0}, want1: false},
+		{name: "保有数量が0より大きければtrue", position: &Position{OwnedQuantity: 0.1}, want1: true},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.position.IsActive()
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_Position_LeaveQuantity(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		position *Position
+		want1    float64
+	}{
+		{name: "保有数量、拘束数量が0なら0", position: &Position{OwnedQuantity: 0, HoldQuantity: 0}, want1: 0},
+		{name: "保有数量 - 拘束数量が0なら0", position: &Position{OwnedQuantity: 100, HoldQuantity: 100}, want1: 0},
+		{name: "保有数量 - 拘束数量が100なら100", position: &Position{OwnedQuantity: 100, HoldQuantity: 0}, want1: 100},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.position.LeaveQuantity()
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}

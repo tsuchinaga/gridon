@@ -79,3 +79,12 @@ const (
 	MarginTradeTypeLong        MarginTradeType = "long"   // 一般長期
 	MarginTradeTypeDay         MarginTradeType = "day"    // 一般デイトレ
 )
+
+// ExecutionType - 執行条件
+type ExecutionType string
+
+const (
+	ExecutionTypeUnspecified ExecutionType = ""       // 未指定
+	ExecutionTypeMarket      ExecutionType = "market" // 成行
+	ExecutionTypeLimit       ExecutionType = "limit"  // 指値
+)

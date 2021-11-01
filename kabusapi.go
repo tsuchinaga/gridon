@@ -14,6 +14,7 @@ type IKabusAPI interface {
 	GetSymbol(symbolCode string, exchange Exchange) (*Symbol, error)
 	GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error)
 	CancelOrder(orderPassword string, orderCode string) (OrderResult, error)
+	SendOrder(strategy *Strategy, order *Order) (OrderResult, error)
 }
 
 // kabusAPI - kabuステーションAPI
@@ -237,5 +238,127 @@ func (k *kabusAPI) CancelOrder(orderPassword string, orderCode string) (OrderRes
 	if err != nil {
 		return OrderResult{}, err
 	}
-	return OrderResult{Result: res.ResultCode == 0, ResultCode: int(res.ResultCode)}, nil
+	return OrderResult{
+		Result:     res.ResultCode == 0,
+		ResultCode: int(res.ResultCode),
+		OrderCode:  res.OrderId,
+	}, nil
+}
+
+// sideTo - Sideをkabus用に変換
+func (k *kabusAPI) sideTo(side Side) kabuspb.Side {
+	switch side {
+	case SideBuy:
+		return kabuspb.Side_SIDE_BUY
+	case SideSell:
+		return kabuspb.Side_SIDE_SELL
+	}
+	return kabuspb.Side_SIDE_UNSPECIFIED
+}
+
+// accountTypeTo - AccountTypeをkabus用に変換
+func (k *kabusAPI) accountTypeTo(accountType AccountType) kabuspb.AccountType {
+	switch accountType {
+	case AccountTypeGeneral:
+		return kabuspb.AccountType_ACCOUNT_TYPE_GENERAL
+	case AccountTypeSpecific:
+		return kabuspb.AccountType_ACCOUNT_TYPE_SPECIFIC
+	case AccountTypeCorporation:
+		return kabuspb.AccountType_ACCOUNT_TYPE_CORPORATION
+	}
+	return kabuspb.AccountType_ACCOUNT_TYPE_UNSPECIFIED
+}
+
+// orderTypeTo - OrderTypeをkabus用に変換
+func (k *kabusAPI) orderTypeTo(executionType ExecutionType) kabuspb.StockOrderType {
+	switch executionType {
+	case ExecutionTypeMarket:
+		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO
+	case ExecutionTypeLimit:
+		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_LO
+	}
+	return kabuspb.StockOrderType_STOCK_ORDER_TYPE_UNSPECIFIED
+}
+
+func (k *kabusAPI) tradeTypeTo(tradeType TradeType) kabuspb.TradeType {
+	switch tradeType {
+	case TradeTypeEntry:
+		return kabuspb.TradeType_TRADE_TYPE_ENTRY
+	case TradeTypeExit:
+		return kabuspb.TradeType_TRADE_TYPE_EXIT
+	}
+	return kabuspb.TradeType_TRADE_TYPE_UNSPECIFIED
+}
+
+func (k *kabusAPI) marginTradeTypeTo(marginTradeType MarginTradeType) kabuspb.MarginTradeType {
+	switch marginTradeType {
+	case MarginTradeTypeSystem:
+		return kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_SYSTEM
+	case MarginTradeTypeLong:
+		return kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_GENERAL_LONG
+	case MarginTradeTypeDay:
+		return kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_GENERAL_DAY
+	}
+	return kabuspb.MarginTradeType_MARGIN_TRADE_TYPE_UNSPECIFIED
+}
+
+func (k *kabusAPI) closePositionsTo(holdPositions []HoldPosition) []*kabuspb.ClosePosition {
+	if holdPositions == nil {
+		return nil
+	}
+
+	res := make([]*kabuspb.ClosePosition, len(holdPositions))
+	for i, hp := range holdPositions {
+		res[i] = &kabuspb.ClosePosition{ExecutionId: hp.PositionCode, Quantity: hp.HoldQuantity}
+	}
+	return res
+}
+
+// SendOrder - 注文の送信
+func (k *kabusAPI) SendOrder(strategy *Strategy, order *Order) (OrderResult, error) {
+	var result OrderResult
+	if strategy == nil || order == nil {
+		return result, ErrNilArgument
+	}
+
+	var res *kabuspb.OrderResponse
+	var err error
+	if order.Product == ProductStock {
+		res, err = k.kabucom.SendStockOrder(context.Background(), &kabuspb.SendStockOrderRequest{
+			Password:     strategy.Account.Password,
+			SymbolCode:   order.SymbolCode,
+			Exchange:     kabuspb.StockExchange(k.exchangeTo(order.Exchange)),
+			Side:         k.sideTo(order.Side),
+			DeliveryType: kabuspb.DeliveryType_DELIVERY_TYPE_CASH,      // お預かり金 多分固定で大丈夫
+			FundType:     kabuspb.FundType_FUND_TYPE_SUBSTITUTE_MARGIN, // 信用代用 多分固定で大丈夫
+			AccountType:  k.accountTypeTo(order.AccountType),
+			Quantity:     order.OrderQuantity,
+			OrderType:    k.orderTypeTo(order.ExecutionType),
+			ExpireDay:    nil,
+		})
+	} else if order.Product == ProductMargin {
+		res, err = k.kabucom.SendMarginOrder(context.Background(), &kabuspb.SendMarginOrderRequest{
+			Password:        strategy.Account.Password,
+			SymbolCode:      strategy.SymbolCode,
+			Exchange:        kabuspb.StockExchange(k.exchangeTo(order.Exchange)),
+			Side:            k.sideTo(order.Side),
+			TradeType:       k.tradeTypeTo(order.TradeType),
+			MarginTradeType: k.marginTradeTypeTo(order.MarginTradeType),
+			DeliveryType:    kabuspb.DeliveryType_DELIVERY_TYPE_CASH, // お預かり金 多分固定で大丈夫
+			AccountType:     k.accountTypeTo(strategy.Account.AccountType),
+			Quantity:        order.OrderQuantity,
+			ClosePositions:  k.closePositionsTo(order.HoldPositions),
+			OrderType:       k.orderTypeTo(order.ExecutionType),
+			Price:           order.Price,
+			ExpireDay:       nil,
+		})
+	}
+	if err != nil {
+		return result, err
+	}
+
+	result.Result = res.ResultCode == 0
+	result.ResultCode = int(res.ResultCode)
+	result.OrderCode = res.OrderId
+	return result, nil
 }

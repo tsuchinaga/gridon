@@ -1,15 +1,30 @@
 package gridon
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Strategy - 戦略
 type Strategy struct {
-	Code                 string    // 戦略コード
-	Product              Product   // 商品種別
-	Cash                 float64   // 運用中現金
-	LastContractPrice    float64   // 最終約定価格
-	LastContractDateTime time.Time // 最終約定日時
-	Account              Account   // 口座情報
+	Code                 string          // 戦略コード
+	SymbolCode           string          // 銘柄コード
+	Exchange             Exchange        // 市場
+	Product              Product         // 商品種別
+	MarginTradeType      MarginTradeType // 信用取引区分
+	EntrySide            Side            // エントリー方向
+	Cash                 float64         // 運用中現金
+	LastContractPrice    float64         // 最終約定価格
+	LastContractDateTime time.Time       // 最終約定日時
+	Account              Account         // 口座情報
+}
+
+func (e *Strategy) String() string {
+	if b, err := json.Marshal(e); err != nil {
+		return err.Error()
+	} else {
+		return string(b)
+	}
 }
 
 // Order - 注文
@@ -23,6 +38,7 @@ type Order struct {
 	MarginTradeType  MarginTradeType // 信用取引区分
 	TradeType        TradeType       // 取引種別
 	Side             Side            // 方向
+	ExecutionType    ExecutionType   // 執行条件
 	Price            float64         // 指値価格
 	OrderQuantity    float64         // 注文数量
 	ContractQuantity float64         // 約定数量
@@ -32,6 +48,14 @@ type Order struct {
 	CancelDateTime   time.Time       // 取消日時
 	Contracts        []Contract      // 約定
 	HoldPositions    []HoldPosition  // エグジットのために拘束ポジション
+}
+
+func (e *Order) String() string {
+	if b, err := json.Marshal(e); err != nil {
+		return err.Error()
+	} else {
+		return string(b)
+	}
 }
 
 // IsActive - 有効な注文か (更新される可能性のある注文)
@@ -93,4 +117,22 @@ type Position struct {
 	OwnedQuantity    float64         // 保有数量
 	HoldQuantity     float64         // 拘束数両
 	ContractDateTime time.Time       // 約定日時
+}
+
+func (e *Position) String() string {
+	if b, err := json.Marshal(e); err != nil {
+		return err.Error()
+	} else {
+		return string(b)
+	}
+}
+
+// IsActive - 有効なポジションか (更新される可能性のあるポジション)
+func (e *Position) IsActive() bool {
+	return e.OwnedQuantity > 0
+}
+
+// LeaveQuantity - 残量
+func (e *Position) LeaveQuantity() float64 {
+	return e.OwnedQuantity - e.HoldQuantity
 }
