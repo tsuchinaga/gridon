@@ -1,10 +1,19 @@
 package gridon
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+	"sort"
+)
 
 // IOrderService - 注文サービスのインターフェース
 type IOrderService interface {
+	GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error)
+	EntryLimit(strategyCode string, price float64, quantity float64) error
+	ExitLimit(strategyCode string, price float64, quantity float64, sortOrder SortOrder) error
+	Cancel(strategy *Strategy, orderCode string) error
 	CancelAll(strategy *Strategy) error
+	ExitAll(strategy *Strategy) error
 }
 
 // orderService - 注文サービス
@@ -12,7 +21,171 @@ type orderService struct {
 	kabusAPI      IKabusAPI
 	orderStore    IOrderStore
 	positionStore IPositionStore
+	strategyStore IStrategyStore
 	clock         IClock
+}
+
+// GetActiveOrdersByStrategyCode - 戦略を指定して有効な注文を取り出す
+func (s *orderService) GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error) {
+	return s.orderStore.GetActiveOrdersByStrategyCode(strategyCode)
+}
+
+// EntryLimit - エントリーの指値注文
+func (s *orderService) EntryLimit(strategyCode string, price float64, quantity float64) error {
+	strategy, err := s.strategyStore.GetByCode(strategyCode)
+	if err != nil {
+		return err
+	}
+
+	if strategy.Cash < price*quantity {
+		return ErrNotEnoughCash
+	}
+
+	order := &Order{
+		StrategyCode:    strategy.Code,
+		SymbolCode:      strategy.SymbolCode,
+		Exchange:        strategy.Exchange,
+		Status:          OrderStatusInOrder,
+		Product:         strategy.Product,
+		MarginTradeType: strategy.MarginTradeType,
+		TradeType:       TradeTypeEntry,
+		Side:            strategy.EntrySide,
+		ExecutionType:   ExecutionTypeLimit,
+		Price:           price,
+		OrderQuantity:   quantity,
+		AccountType:     strategy.Account.AccountType,
+		OrderDateTime:   s.clock.Now(),
+	}
+
+	res, err := s.kabusAPI.SendOrder(strategy, order)
+	if err != nil {
+		return err
+	}
+
+	if res.Result {
+		order.Code = res.OrderCode
+		if err := s.orderStore.Save(order); err != nil {
+			return fmt.Errorf("order=%+v: %w", order, err)
+		}
+
+		// 現金余力の更新
+		if err := s.strategyStore.AddStrategyCash(order.StrategyCode, -1*price*quantity); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("result=%+v, order=%+v: %w", res, order, ErrOrderCondition)
+	}
+
+	return nil
+}
+
+// ExitLimit - エグジットの指値注文
+func (s *orderService) ExitLimit(strategyCode string, price float64, quantity float64, sortOrder SortOrder) error {
+	strategy, err := s.strategyStore.GetByCode(strategyCode)
+	if err != nil {
+		return err
+	}
+
+	order := &Order{
+		StrategyCode:    strategy.Code,
+		SymbolCode:      strategy.SymbolCode,
+		Exchange:        strategy.Exchange,
+		Status:          OrderStatusInOrder,
+		Product:         strategy.Product,
+		MarginTradeType: strategy.MarginTradeType,
+		TradeType:       TradeTypeExit,
+		Side:            strategy.EntrySide.Turn(),
+		ExecutionType:   ExecutionTypeLimit,
+		Price:           price,
+		OrderQuantity:   quantity,
+		AccountType:     strategy.Account.AccountType,
+		OrderDateTime:   s.clock.Now(),
+	}
+
+	// エグジットポジションの拘束
+	positions, err := s.positionStore.GetActivePositionsByStrategyCode(strategy.Code)
+	if err != nil {
+		return err
+	}
+	// 並び順を変更し、古いのから返すか、新しいのから返すかを管理する
+	switch sortOrder {
+	case SortOrderNewest:
+		sort.Slice(positions, func(i, j int) bool {
+			return positions[i].ContractDateTime.After(positions[j].ContractDateTime)
+		})
+	case SortOrderLatest:
+		sort.Slice(positions, func(i, j int) bool {
+			return positions[i].ContractDateTime.Before(positions[j].ContractDateTime)
+		})
+	}
+
+	q := quantity
+	for _, p := range positions {
+		hq := math.Min(q, p.LeaveQuantity())
+		if err := s.positionStore.Hold(p.Code, hq); err != nil {
+			// 拘束したポジションを解放する
+			// ただし、解放の処理でエラーでたら対応できない
+			for _, hp := range order.HoldPositions {
+				_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
+			}
+			return err
+		}
+		order.HoldPositions = append(order.HoldPositions, HoldPosition{PositionCode: p.Code, HoldQuantity: hq})
+		q -= hq
+
+		// 必要数拘束したところで抜ける
+		if q <= 0 {
+			break
+		}
+	}
+
+	// 必要数を拘束できないならエラー
+	if q > 0 {
+		// 拘束したポジションを解放する
+		// ただし、解放の処理でエラーでたら対応できない
+		for _, hp := range order.HoldPositions {
+			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
+		}
+		return ErrNotEnoughPosition
+	}
+
+	res, err := s.kabusAPI.SendOrder(strategy, order)
+	if err != nil {
+		return err
+	}
+
+	if res.Result {
+		order.Code = res.OrderCode
+		if err := s.orderStore.Save(order); err != nil {
+			return fmt.Errorf("order=%+v: %w", order, err)
+		}
+	} else {
+		// 拘束したポジションを解放する
+		// ただし、解放の処理でエラーでたら対応できない
+		for _, hp := range order.HoldPositions {
+			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
+		}
+		return fmt.Errorf("result=%+v, order=%+v: %w", res, order, ErrOrderCondition)
+	}
+
+	return nil
+}
+
+// Cancel - 指定した注文を取り消す
+func (s *orderService) Cancel(strategy *Strategy, orderCode string) error {
+	if strategy == nil {
+		return ErrNilArgument
+	}
+
+	res, err := s.kabusAPI.CancelOrder(strategy.Account.Password, orderCode)
+	if err != nil {
+		return err
+	}
+	if !res.Result {
+		return fmt.Errorf("result=%+v, orderCode=%+v: %w", res, orderCode, ErrCancelCondition)
+	}
+
+	return nil
 }
 
 // CancelAll - 戦略に関連する全ての注文を取り消す
@@ -33,7 +206,6 @@ func (s *orderService) CancelAll(strategy *Strategy) error {
 		if err != nil {
 			return err
 		}
-		// TODO 取消注文に失敗したログを残す？
 	}
 	return nil
 }

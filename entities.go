@@ -16,6 +16,7 @@ type Strategy struct {
 	Cash                 float64         // 運用中現金
 	LastContractPrice    float64         // 最終約定価格
 	LastContractDateTime time.Time       // 最終約定日時
+	GridStrategy         GridStrategy    // グリッド戦略
 	Account              Account         // 口座情報
 }
 

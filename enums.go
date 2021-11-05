@@ -88,3 +88,12 @@ const (
 	ExecutionTypeMarket      ExecutionType = "market" // 成行
 	ExecutionTypeLimit       ExecutionType = "limit"  // 指値
 )
+
+// SortOrder - 並び順
+type SortOrder string
+
+const (
+	SortOrderUnspecified SortOrder = "unspecified"
+	SortOrderNewest      SortOrder = "newest"
+	SortOrderLatest      SortOrder = "latest"
+)

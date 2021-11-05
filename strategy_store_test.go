@@ -15,8 +15,13 @@ type testStrategyStore struct {
 	SetContract1           error
 	SetContractHistory     []interface{}
 	SetContractCount       int
+	GetByCode1             *Strategy
+	GetByCode2             error
 }
 
+func (t *testStrategyStore) GetByCode(string) (*Strategy, error) {
+	return t.GetByCode1, t.GetByCode2
+}
 func (t *testStrategyStore) AddStrategyCash(strategyCode string, cashDiff float64) error {
 	t.AddStrategyCashHistory = append(t.AddStrategyCashHistory, strategyCode)
 	t.AddStrategyCashHistory = append(t.AddStrategyCashHistory, cashDiff)
@@ -149,6 +154,45 @@ func Test_strategyStore_SetContract(t *testing.T) {
 			got1 := store.SetContract(test.arg1, test.arg2, test.arg3)
 			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_strategyStore_GetByCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		store map[string]*Strategy
+		arg1  string
+		want1 *Strategy
+		want2 error
+	}{
+		{name: "指定したコードがなければerror",
+			store: map[string]*Strategy{},
+			arg1:  "strategy-code-001",
+			want1: nil,
+			want2: ErrNoData},
+		{name: "mapがnilならerror",
+			store: nil,
+			arg1:  "strategy-code-001",
+			want1: nil,
+			want2: ErrNoData},
+		{name: "指定したコードが存在すればStrategyを返す",
+			store: map[string]*Strategy{"strategy-code-001": {Code: "strategy-code-001"}},
+			arg1:  "strategy-code-001",
+			want1: &Strategy{Code: "strategy-code-001"},
+			want2: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := strategyStore{store: test.store}
+			got1, got2 := store.GetByCode(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
 		})
 	}

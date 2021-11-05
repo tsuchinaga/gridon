@@ -1,6 +1,8 @@
 package gridon
 
-import "time"
+import (
+	"time"
+)
 
 // Symbol - 銘柄情報
 type Symbol struct {
@@ -66,4 +68,24 @@ type OrderResult struct {
 type Account struct {
 	Password    string      // 注文パスワード
 	AccountType AccountType // 口座種別
+}
+
+// GridStrategy - グリッド戦略
+type GridStrategy struct {
+	Runnable      bool      // 実行可能かどうか
+	Width         int       // グリッド幅(tick数)
+	Quantity      float64   // 1グリッドに乗せる数量
+	NumberOfGrids int       // 指値注文を入れておくグリッドの本数
+	StartTime     time.Time // 戦略動作開始時刻
+	EndTime       time.Time // 戦略動作終了時刻
+}
+
+// IsValid - グリッド戦略が有効かどうか
+func (v *GridStrategy) IsValid(now time.Time) bool {
+	if !v.Runnable {
+		return false
+	}
+	start := time.Date(now.Year(), now.Month(), now.Day(), v.StartTime.Hour(), v.StartTime.Minute(), v.StartTime.Second(), v.StartTime.Nanosecond(), now.Location())
+	end := time.Date(now.Year(), now.Month(), now.Day(), v.EndTime.Hour(), v.EndTime.Minute(), v.EndTime.Second(), v.EndTime.Nanosecond(), now.Location())
+	return !now.Before(start) && now.Before(end)
 }

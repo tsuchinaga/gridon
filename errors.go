@@ -3,7 +3,12 @@ package gridon
 import "errors"
 
 var (
-	ErrUnknown        = errors.New("unknown")
-	ErrNilArgument    = errors.New("nil argument")
-	ErrOrderCondition = errors.New("orders condition")
+	ErrUnknown           = errors.New("unknown")
+	ErrNilArgument       = errors.New("nil argument")
+	ErrNoData            = errors.New("no data")
+	ErrOrderCondition    = errors.New("order condition")
+	ErrCancelCondition   = errors.New("cancel condition")
+	ErrNotEnoughCash     = errors.New("not enough cash")
+	ErrNotEnoughPosition = errors.New("not enough position")
+	ErrUndecidableValue  = errors.New("undecidable value")
 )
