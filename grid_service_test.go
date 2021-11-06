@@ -140,7 +140,7 @@ func Test_gridService_sendGridOrder(t *testing.T) {
 			arg3:                 2000.0,
 			arg4:                 4,
 			want1:                ErrUnknown,
-			wantExitLimitHistory: []interface{}{"strategy-code-001", 2100.0, 4.0, SortOrderLatest}},
+			wantExitLimitHistory: []interface{}{"strategy-code-001", 2100.0, 4.0, SortOrderNewest}},
 		{name: "entrySideが買いで、limitPriceがbasePriceより大きい場合、exitを叩き、エラーがなければエラーなし",
 			orderService:         &testOrderService{ExitLimit1: nil},
 			arg1:                 &Strategy{Code: "strategy-code-001", EntrySide: SideBuy},
@@ -148,7 +148,7 @@ func Test_gridService_sendGridOrder(t *testing.T) {
 			arg3:                 2000.0,
 			arg4:                 4,
 			want1:                nil,
-			wantExitLimitHistory: []interface{}{"strategy-code-001", 2100.0, 4.0, SortOrderLatest}},
+			wantExitLimitHistory: []interface{}{"strategy-code-001", 2100.0, 4.0, SortOrderNewest}},
 		{name: "entrySideが売りで、limitPriceがbasePriceより大きい場合、entryを叩くが、エラーが返されたらエラー",
 			orderService:          &testOrderService{EntryLimit1: ErrUnknown},
 			arg1:                  &Strategy{Code: "strategy-code-001", EntrySide: SideSell},
@@ -172,7 +172,7 @@ func Test_gridService_sendGridOrder(t *testing.T) {
 			arg3:                 2100.0,
 			arg4:                 4,
 			want1:                ErrUnknown,
-			wantExitLimitHistory: []interface{}{"strategy-code-001", 2000.0, 4.0, SortOrderLatest}},
+			wantExitLimitHistory: []interface{}{"strategy-code-001", 2000.0, 4.0, SortOrderNewest}},
 		{name: "entrySideが売りで、limitPriceがbasePrice未満の場合、entryを叩き、エラーがなければエラーなし",
 			orderService:         &testOrderService{ExitLimit1: nil},
 			arg1:                 &Strategy{Code: "strategy-code-001", EntrySide: SideSell},
@@ -180,7 +180,7 @@ func Test_gridService_sendGridOrder(t *testing.T) {
 			arg3:                 2100.0,
 			arg4:                 4,
 			want1:                nil,
-			wantExitLimitHistory: []interface{}{"strategy-code-001", 2000.0, 4.0, SortOrderLatest}},
+			wantExitLimitHistory: []interface{}{"strategy-code-001", 2000.0, 4.0, SortOrderNewest}},
 	}
 
 	for _, test := range tests {
@@ -371,8 +371,8 @@ func Test_gridService_Leveling(t *testing.T) {
 				"strategy-code-001", 2096.0, 4.0,
 			},
 			wantExitLimitHistory: []interface{}{
-				"strategy-code-001", 2102.0, 4.0, SortOrderLatest,
-				"strategy-code-001", 2104.0, 4.0, SortOrderLatest,
+				"strategy-code-001", 2102.0, 4.0, SortOrderNewest,
+				"strategy-code-001", 2104.0, 4.0, SortOrderNewest,
 			}},
 		{name: "エントリー注文でエラーがでたらエラー",
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
@@ -394,7 +394,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				}},
 			want1:                 ErrUnknown,
 			wantEntryLimitHistory: []interface{}{"strategy-code-001", 2098.0, 4.0},
-			wantExitLimitHistory:  []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderLatest}},
+			wantExitLimitHistory:  []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderNewest}},
 		{name: "エグジット注文でエラーがでたらエラー",
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
 			orderService: &testOrderService{
@@ -414,7 +414,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					EndTime:       time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
 				}},
 			want1:                ErrUnknown,
-			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderLatest}},
+			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderNewest}},
 		{name: "乗せたいグリッドにすでに注文があれば、不足分だけを注文する",
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
 			orderService: &testOrderService{
@@ -439,7 +439,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					EndTime:       time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
 				}},
 			want1:                ErrUnknown,
-			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 2.0, SortOrderLatest}},
+			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 2.0, SortOrderNewest}},
 		{name: "基準価格のグリッドに注文が残っていたら、隣のグリッドに乗せる数を減らす",
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
 			orderService: &testOrderService{
@@ -465,7 +465,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					EndTime:       time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
 				}},
 			want1:                ErrUnknown,
-			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 1.0, SortOrderLatest}},
+			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 1.0, SortOrderNewest}},
 	}
 
 	for _, test := range tests {

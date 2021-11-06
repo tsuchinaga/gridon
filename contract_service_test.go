@@ -91,14 +91,15 @@ func Test_contractService_releaseHoldPositions(t *testing.T) {
 func Test_contractService_entryContract(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name                   string
-		positionStore          *testPositionStore
-		strategyStore          *testStrategyStore
-		arg1                   *Order
-		arg2                   Contract
-		want1                  error
-		wantSaveHistory        []interface{}
-		wantSetContractHistory []interface{}
+		name                       string
+		positionStore              *testPositionStore
+		strategyStore              *testStrategyStore
+		arg1                       *Order
+		arg2                       Contract
+		want1                      error
+		wantSaveHistory            []interface{}
+		wantAddStrategyCashHistory []interface{}
+		wantSetContractHistory     []interface{}
 	}{
 		{name: "引数がnilならエラー",
 			positionStore:          &testPositionStore{},
@@ -148,7 +149,29 @@ func Test_contractService_entryContract(t *testing.T) {
 				HoldQuantity:     0,
 				ContractDateTime: time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local),
 			}},
-			wantSetContractHistory: []interface{}{"strategy-code-001", 2070.0, time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local)}},
+			wantAddStrategyCashHistory: []interface{}{"strategy-code-001", -1 * 2070.0 * 4.0},
+			wantSetContractHistory:     []interface{}{"strategy-code-001", 2070.0, time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local)}},
+		{name: "余力の登録に失敗したらエラー",
+			positionStore: &testPositionStore{},
+			strategyStore: &testStrategyStore{AddStrategyCash1: ErrUnknown},
+			arg1:          &Order{Code: "order-code-001", StrategyCode: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Side: SideBuy, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay},
+			arg2:          Contract{PositionCode: "position-code-001", Price: 2070, Quantity: 4, ContractDateTime: time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local)},
+			want1:         ErrUnknown,
+			wantSaveHistory: []interface{}{&Position{
+				Code:             "position-code-001",
+				StrategyCode:     "strategy-code-001",
+				OrderCode:        "order-code-001",
+				SymbolCode:       "1475",
+				Exchange:         ExchangeToushou,
+				Side:             SideBuy,
+				Product:          ProductMargin,
+				MarginTradeType:  MarginTradeTypeDay,
+				Price:            2070,
+				OwnedQuantity:    4,
+				HoldQuantity:     0,
+				ContractDateTime: time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local),
+			}},
+			wantAddStrategyCashHistory: []interface{}{"strategy-code-001", -1 * 2070.0 * 4.0}},
 		{name: "最後までエラーなく処理できたらnilを返す",
 			positionStore: &testPositionStore{},
 			strategyStore: &testStrategyStore{},
@@ -169,7 +192,8 @@ func Test_contractService_entryContract(t *testing.T) {
 				HoldQuantity:     0,
 				ContractDateTime: time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local),
 			}},
-			wantSetContractHistory: []interface{}{"strategy-code-001", 2070.0, time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local)}},
+			wantAddStrategyCashHistory: []interface{}{"strategy-code-001", -1 * 2070.0 * 4.0},
+			wantSetContractHistory:     []interface{}{"strategy-code-001", 2070.0, time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local)}},
 	}
 
 	for _, test := range tests {
@@ -180,13 +204,15 @@ func Test_contractService_entryContract(t *testing.T) {
 			got1 := service.entryContract(test.arg1, test.arg2)
 			if !errors.Is(got1, test.want1) ||
 				!reflect.DeepEqual(test.wantSaveHistory, test.positionStore.SaveHistory) ||
+				!reflect.DeepEqual(test.wantAddStrategyCashHistory, test.strategyStore.AddStrategyCashHistory) ||
 				!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractHistory) {
-				t.Errorf("%s error\nresult: %+v, %+v, %+v\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+				t.Errorf("%s error\nresult: %+v, %+v, %+v, %+v\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
 					!errors.Is(got1, test.want1),
 					!reflect.DeepEqual(test.wantSaveHistory, test.positionStore.SaveHistory),
+					!reflect.DeepEqual(test.wantAddStrategyCashHistory, test.strategyStore.AddStrategyCashHistory),
 					!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractHistory),
-					test.want1, test.wantSaveHistory, test.wantSetContractHistory,
-					got1, test.positionStore.SaveHistory, test.strategyStore.SetContractHistory)
+					test.want1, test.wantSaveHistory, test.wantAddStrategyCashHistory, test.wantSetContractHistory,
+					got1, test.positionStore.SaveHistory, test.strategyStore.AddStrategyCashHistory, test.strategyStore.SetContractHistory)
 			}
 		})
 	}

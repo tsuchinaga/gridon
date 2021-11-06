@@ -101,6 +101,11 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 		return err
 	}
 
+	// 現金余力の更新
+	if err := s.strategyStore.AddStrategyCash(order.StrategyCode, -1*contract.Price*contract.Quantity); err != nil {
+		return err
+	}
+
 	// 戦略の最終約定情報を更新
 	if err := s.strategyStore.SetContract(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
 		return err

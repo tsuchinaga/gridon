@@ -139,7 +139,7 @@ func (s *gridService) sendGridOrder(strategy *Strategy, limitPrice float64, base
 			return err
 		}
 	} else if strategy.EntrySide == side.Turn() {
-		if err := s.orderService.ExitLimit(strategy.Code, limitPrice, quantity, SortOrderLatest); err != nil {
+		if err := s.orderService.ExitLimit(strategy.Code, limitPrice, quantity, SortOrderNewest); err != nil {
 			return err
 		}
 	}

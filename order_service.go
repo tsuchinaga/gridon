@@ -11,6 +11,8 @@ type IOrderService interface {
 	GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error)
 	EntryLimit(strategyCode string, price float64, quantity float64) error
 	ExitLimit(strategyCode string, price float64, quantity float64, sortOrder SortOrder) error
+	EntryMarket(strategyCode string, quantity float64) error
+	ExitMarket(strategyCode string, quantity float64, sortOrder SortOrder) error
 	Cancel(strategy *Strategy, orderCode string) error
 	CancelAll(strategy *Strategy) error
 	ExitAll(strategy *Strategy) error
@@ -37,7 +39,11 @@ func (s *orderService) EntryLimit(strategyCode string, price float64, quantity f
 		return err
 	}
 
-	if strategy.Cash < price*quantity {
+	check, err := s.checkEntryCash(strategyCode, strategy.Cash, price, quantity)
+	if err != nil {
+		return err
+	}
+	if !check {
 		return ErrNotEnoughCash
 	}
 
@@ -57,26 +63,7 @@ func (s *orderService) EntryLimit(strategyCode string, price float64, quantity f
 		OrderDateTime:   s.clock.Now(),
 	}
 
-	res, err := s.kabusAPI.SendOrder(strategy, order)
-	if err != nil {
-		return err
-	}
-
-	if res.Result {
-		order.Code = res.OrderCode
-		if err := s.orderStore.Save(order); err != nil {
-			return fmt.Errorf("order=%+v: %w", order, err)
-		}
-
-		// 現金余力の更新
-		if err := s.strategyStore.AddStrategyCash(order.StrategyCode, -1*price*quantity); err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("result=%+v, order=%+v: %w", res, order, ErrOrderCondition)
-	}
-
-	return nil
+	return s.sendOrder(strategy, order)
 }
 
 // ExitLimit - エグジットの指値注文
@@ -102,73 +89,13 @@ func (s *orderService) ExitLimit(strategyCode string, price float64, quantity fl
 		OrderDateTime:   s.clock.Now(),
 	}
 
-	// エグジットポジションの拘束
-	positions, err := s.positionStore.GetActivePositionsByStrategyCode(strategy.Code)
+	hp, err := s.holdPositions(strategyCode, quantity, sortOrder)
 	if err != nil {
 		return err
 	}
-	// 並び順を変更し、古いのから返すか、新しいのから返すかを管理する
-	switch sortOrder {
-	case SortOrderNewest:
-		sort.Slice(positions, func(i, j int) bool {
-			return positions[i].ContractDateTime.After(positions[j].ContractDateTime)
-		})
-	case SortOrderLatest:
-		sort.Slice(positions, func(i, j int) bool {
-			return positions[i].ContractDateTime.Before(positions[j].ContractDateTime)
-		})
-	}
+	order.HoldPositions = hp
 
-	q := quantity
-	for _, p := range positions {
-		hq := math.Min(q, p.LeaveQuantity())
-		if err := s.positionStore.Hold(p.Code, hq); err != nil {
-			// 拘束したポジションを解放する
-			// ただし、解放の処理でエラーでたら対応できない
-			for _, hp := range order.HoldPositions {
-				_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
-			}
-			return err
-		}
-		order.HoldPositions = append(order.HoldPositions, HoldPosition{PositionCode: p.Code, HoldQuantity: hq})
-		q -= hq
-
-		// 必要数拘束したところで抜ける
-		if q <= 0 {
-			break
-		}
-	}
-
-	// 必要数を拘束できないならエラー
-	if q > 0 {
-		// 拘束したポジションを解放する
-		// ただし、解放の処理でエラーでたら対応できない
-		for _, hp := range order.HoldPositions {
-			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
-		}
-		return ErrNotEnoughPosition
-	}
-
-	res, err := s.kabusAPI.SendOrder(strategy, order)
-	if err != nil {
-		return err
-	}
-
-	if res.Result {
-		order.Code = res.OrderCode
-		if err := s.orderStore.Save(order); err != nil {
-			return fmt.Errorf("order=%+v: %w", order, err)
-		}
-	} else {
-		// 拘束したポジションを解放する
-		// ただし、解放の処理でエラーでたら対応できない
-		for _, hp := range order.HoldPositions {
-			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
-		}
-		return fmt.Errorf("result=%+v, order=%+v: %w", res, order, ErrOrderCondition)
-	}
-
-	return nil
+	return s.sendOrder(strategy, order)
 }
 
 // Cancel - 指定した注文を取り消す
@@ -268,6 +195,168 @@ func (s *orderService) ExitAll(strategy *Strategy) error {
 		}
 		return err
 	}
+	if res.Result {
+		order.Code = res.OrderCode
+		if err := s.orderStore.Save(order); err != nil {
+			return fmt.Errorf("order=%+v: %w", order, err)
+		}
+	} else {
+		// 拘束したポジションを解放する
+		// ただし、解放の処理でエラーでたら対応できない
+		for _, hp := range order.HoldPositions {
+			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
+		}
+		return fmt.Errorf("result=%+v, order=%+v: %w", res, order, ErrOrderCondition)
+	}
+
+	return nil
+}
+
+// EntryMarket - エントリーの成行注文
+func (s *orderService) EntryMarket(strategyCode string, quantity float64) error {
+	strategy, err := s.strategyStore.GetByCode(strategyCode)
+	if err != nil {
+		return err
+	}
+
+	order := &Order{
+		StrategyCode:    strategy.Code,
+		SymbolCode:      strategy.SymbolCode,
+		Exchange:        strategy.Exchange,
+		Status:          OrderStatusInOrder,
+		Product:         strategy.Product,
+		MarginTradeType: strategy.MarginTradeType,
+		TradeType:       TradeTypeEntry,
+		Side:            strategy.EntrySide,
+		ExecutionType:   ExecutionTypeMarket,
+		OrderQuantity:   quantity,
+		AccountType:     strategy.Account.AccountType,
+		OrderDateTime:   s.clock.Now(),
+	}
+
+	return s.sendOrder(strategy, order)
+}
+
+// ExitMarket - エグジットの成行注文
+func (s *orderService) ExitMarket(strategyCode string, quantity float64, sortOrder SortOrder) error {
+	strategy, err := s.strategyStore.GetByCode(strategyCode)
+	if err != nil {
+		return err
+	}
+
+	order := &Order{
+		StrategyCode:    strategy.Code,
+		SymbolCode:      strategy.SymbolCode,
+		Exchange:        strategy.Exchange,
+		Status:          OrderStatusInOrder,
+		Product:         strategy.Product,
+		MarginTradeType: strategy.MarginTradeType,
+		TradeType:       TradeTypeExit,
+		Side:            strategy.EntrySide.Turn(),
+		ExecutionType:   ExecutionTypeMarket,
+		OrderQuantity:   quantity,
+		AccountType:     strategy.Account.AccountType,
+		OrderDateTime:   s.clock.Now(),
+	}
+	hp, err := s.holdPositions(strategyCode, quantity, sortOrder)
+	if err != nil {
+		return err
+	}
+	order.HoldPositions = hp
+
+	return s.sendOrder(strategy, order)
+}
+
+// checkEntryCash - エントリーするために必要な現金があるか
+func (s *orderService) checkEntryCash(strategyCode string, cash float64, limitPrice float64, orderQuantity float64) (bool, error) {
+	orders, err := s.orderStore.GetActiveOrdersByStrategyCode(strategyCode)
+	if err != nil {
+		return false, err
+	}
+	var totalLimitOrderPrice float64
+	for _, o := range orders {
+		totalLimitOrderPrice += o.Price * (o.OrderQuantity - o.ContractQuantity)
+	}
+
+	if cash < totalLimitOrderPrice+limitPrice*orderQuantity {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// holdPositions - 注文に必要なポジションを拘束する
+func (s *orderService) holdPositions(strategyCode string, quantity float64, sortOrder SortOrder) ([]HoldPosition, error) {
+	positions, err := s.positionStore.GetActivePositionsByStrategyCode(strategyCode)
+	if err != nil {
+		return nil, err
+	}
+
+	// 並び順を変更し、古いのから返すか、新しいのから返すかを管理する
+	switch sortOrder {
+	case SortOrderNewest:
+		sort.Slice(positions, func(i, j int) bool {
+			return positions[i].ContractDateTime.After(positions[j].ContractDateTime)
+		})
+	case SortOrderLatest:
+		sort.Slice(positions, func(i, j int) bool {
+			return positions[i].ContractDateTime.Before(positions[j].ContractDateTime)
+		})
+	}
+
+	var hp []HoldPosition
+	q := quantity
+	for _, p := range positions {
+		hq := math.Min(q, p.LeaveQuantity())
+		if hq <= 0 {
+			continue
+		}
+		if err := s.positionStore.Hold(p.Code, hq); err != nil {
+			// 拘束したポジションを解放する
+			// ただし、解放の処理でエラーでたら対応できない
+			for _, hp := range hp {
+				_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
+			}
+			return nil, err
+		}
+		hp = append(hp, HoldPosition{PositionCode: p.Code, HoldQuantity: hq})
+		q -= hq
+
+		// 必要数拘束したところで抜ける
+		if q <= 0 {
+			break
+		}
+	}
+
+	// 必要数を拘束できないならエラー
+	if q > 0 {
+		// 拘束したポジションを解放する
+		// ただし、解放の処理でエラーでたら対応できない
+		for _, hp := range hp {
+			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
+		}
+		return nil, ErrNotEnoughPosition
+	}
+
+	return hp, nil
+}
+
+// sendOrder - 注文の送信から保存までの処理
+func (s *orderService) sendOrder(strategy *Strategy, order *Order) error {
+	if strategy == nil || order == nil {
+		return ErrNilArgument
+	}
+
+	res, err := s.kabusAPI.SendOrder(strategy, order)
+	if err != nil {
+		// 拘束したポジションを解放する
+		// ただし、解放の処理でエラーでたら対応できない
+		for _, hp := range order.HoldPositions {
+			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
+		}
+		return err
+	}
+
 	if res.Result {
 		order.Code = res.OrderCode
 		if err := s.orderStore.Save(order); err != nil {
