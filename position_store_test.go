@@ -59,18 +59,22 @@ func (t *testPositionStore) Hold(positionCode string, quantity float64) error {
 func Test_positionStore_Save(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name      string
-		store     map[string]*Position
-		arg1      *Position
-		want1     error
-		wantStore map[string]*Position
+		db                    *testDB
+		name                  string
+		store                 map[string]*Position
+		arg1                  *Position
+		want1                 error
+		wantStore             map[string]*Position
+		wantSavePositionCount int
 	}{
 		{name: "引数がnilならerr",
+			db:        &testDB{},
 			store:     map[string]*Position{},
 			arg1:      nil,
 			want1:     ErrNilArgument,
 			wantStore: map[string]*Position{}},
 		{name: "codeが一致するpositionがなければ追加される",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001"},
 				"position-code-002": {Code: "position-code-002"},
@@ -82,9 +86,10 @@ func Test_positionStore_Save(t *testing.T) {
 				"position-code-001": {Code: "position-code-001"},
 				"position-code-002": {Code: "position-code-002"},
 				"position-code-003": {Code: "position-code-003"},
-				"position-code-004": {Code: "position-code-004"},
-			}},
+				"position-code-004": {Code: "position-code-004"}},
+			wantSavePositionCount: 1},
 		{name: "codeが一致するpositionがあれば更新される",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001"},
 				"position-code-002": {Code: "position-code-002"},
@@ -95,18 +100,23 @@ func Test_positionStore_Save(t *testing.T) {
 			wantStore: map[string]*Position{
 				"position-code-001": {Code: "position-code-001"},
 				"position-code-002": {Code: "position-code-002", HoldQuantity: 100},
-				"position-code-003": {Code: "position-code-003"},
-			}},
+				"position-code-003": {Code: "position-code-003"}},
+			wantSavePositionCount: 1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			store := &positionStore{store: test.store}
+			store := &positionStore{store: test.store, db: test.db}
 			got1 := store.Save(test.arg1)
-			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantStore, got1, store.store)
+
+			time.Sleep(100 * time.Millisecond)
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantSavePositionCount, test.db.SavePositionCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantSavePositionCount,
+					got1, store.store, test.db.SavePositionCount)
 			}
 		})
 	}
@@ -115,14 +125,17 @@ func Test_positionStore_Save(t *testing.T) {
 func Test_positionStore_ExitContract(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name      string
-		store     map[string]*Position
-		arg1      string
-		arg2      float64
-		want1     error
-		wantStore map[string]*Position
+		db                    *testDB
+		name                  string
+		store                 map[string]*Position
+		arg1                  string
+		arg2                  float64
+		want1                 error
+		wantStore             map[string]*Position
+		wantSavePositionCount int
 	}{
 		{name: "該当するポジションがなければ何もしない",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 300, HoldQuantity: 300},
@@ -134,9 +147,9 @@ func Test_positionStore_ExitContract(t *testing.T) {
 			wantStore: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 300, HoldQuantity: 300},
-				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200},
-			}},
+				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200}}},
 		{name: "該当するポジションの保有数と拘束数を減算する",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 300, HoldQuantity: 300},
@@ -148,18 +161,23 @@ func Test_positionStore_ExitContract(t *testing.T) {
 			wantStore: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 100, HoldQuantity: 100},
-				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200},
-			}},
+				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200}},
+			wantSavePositionCount: 1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			store := &positionStore{store: test.store}
+			store := &positionStore{store: test.store, db: test.db}
 			got1 := store.ExitContract(test.arg1, test.arg2)
-			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantStore, got1, store.store)
+
+			time.Sleep(100 * time.Millisecond)
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantSavePositionCount, test.db.SavePositionCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantSavePositionCount,
+					got1, store.store, test.db.SavePositionCount)
 			}
 		})
 	}
@@ -168,14 +186,17 @@ func Test_positionStore_ExitContract(t *testing.T) {
 func Test_positionStore_Release(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name      string
-		store     map[string]*Position
-		arg1      string
-		arg2      float64
-		want1     error
-		wantStore map[string]*Position
+		db                    *testDB
+		name                  string
+		store                 map[string]*Position
+		arg1                  string
+		arg2                  float64
+		want1                 error
+		wantStore             map[string]*Position
+		wantSavePositionCount int
 	}{
 		{name: "該当するポジションがなければ何もしない",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 300, HoldQuantity: 300},
@@ -187,9 +208,9 @@ func Test_positionStore_Release(t *testing.T) {
 			wantStore: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 300, HoldQuantity: 300},
-				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200},
-			}},
+				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200}}},
 		{name: "該当するポジションの拘束数を減算する",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 300, HoldQuantity: 300},
@@ -201,18 +222,23 @@ func Test_positionStore_Release(t *testing.T) {
 			wantStore: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 300, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 300, HoldQuantity: 100},
-				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200},
-			}},
+				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 200}},
+			wantSavePositionCount: 1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			store := &positionStore{store: test.store}
+			store := &positionStore{store: test.store, db: test.db}
 			got1 := store.Release(test.arg1, test.arg2)
-			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantStore, got1, store.store)
+
+			time.Sleep(100 * time.Millisecond)
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantSavePositionCount, test.db.SavePositionCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantSavePositionCount,
+					got1, store.store, test.db.SavePositionCount)
 			}
 		})
 	}
@@ -271,14 +297,17 @@ func Test_positionStore_GetActivePositionsByStrategyCode(t *testing.T) {
 func Test_positionStore_Hold(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name      string
-		store     map[string]*Position
-		arg1      string
-		arg2      float64
-		want1     error
-		wantStore map[string]*Position
+		db                    *testDB
+		name                  string
+		store                 map[string]*Position
+		arg1                  string
+		arg2                  float64
+		want1                 error
+		wantStore             map[string]*Position
+		wantSavePositionCount int
 	}{
 		{name: "指定したpositionCodeがなければ何もしない",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 200, HoldQuantity: 0},
@@ -290,32 +319,36 @@ func Test_positionStore_Hold(t *testing.T) {
 			wantStore: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 200, HoldQuantity: 0},
-				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 0},
-			}},
+				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 0}}},
 		{name: "指定したpositionCodeがあれば、拘束数に加算する",
+			db: &testDB{},
 			store: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 0},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 200, HoldQuantity: 0},
-				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 0},
-			},
+				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 0}},
 			arg1:  "position-code-001",
 			arg2:  100,
 			want1: nil,
 			wantStore: map[string]*Position{
 				"position-code-001": {Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 100},
 				"position-code-002": {Code: "position-code-002", OwnedQuantity: 200, HoldQuantity: 0},
-				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 0},
-			}},
+				"position-code-003": {Code: "position-code-003", OwnedQuantity: 300, HoldQuantity: 0}},
+			wantSavePositionCount: 1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			store := &positionStore{store: test.store}
+			store := &positionStore{store: test.store, db: test.db}
 			got1 := store.Hold(test.arg1, test.arg2)
-			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantStore, got1, store.store)
+
+			time.Sleep(100 * time.Millisecond)
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantSavePositionCount, test.db.SavePositionCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantSavePositionCount,
+					got1, store.store, test.db.SavePositionCount)
 			}
 		})
 	}

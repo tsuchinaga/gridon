@@ -32,18 +32,22 @@ func (t *testOrderStore) Save(order *Order) error {
 func Test_orderStore_Save(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name      string
-		store     map[string]*Order
-		arg1      *Order
-		want1     error
-		wantStore map[string]*Order
+		db                 *testDB
+		name               string
+		store              map[string]*Order
+		arg1               *Order
+		want1              error
+		wantStore          map[string]*Order
+		wantSaveOrderCount int
 	}{
 		{name: "引数がnilならエラー",
+			db:        &testDB{},
 			store:     map[string]*Order{},
 			arg1:      nil,
 			want1:     ErrNilArgument,
 			wantStore: map[string]*Order{}},
 		{name: "同一コードの注文がなければ追加",
+			db: &testDB{},
 			store: map[string]*Order{
 				"order-code-001": {Code: "order-code-001"},
 				"order-code-002": {Code: "order-code-002"},
@@ -55,9 +59,10 @@ func Test_orderStore_Save(t *testing.T) {
 				"order-code-001": {Code: "order-code-001"},
 				"order-code-002": {Code: "order-code-002"},
 				"order-code-003": {Code: "order-code-003"},
-				"order-code-004": {Code: "order-code-004"},
-			}},
+				"order-code-004": {Code: "order-code-004"}},
+			wantSaveOrderCount: 1},
 		{name: "同一コードの注文があれば上書き",
+			db: &testDB{},
 			store: map[string]*Order{
 				"order-code-001": {Code: "order-code-001"},
 				"order-code-002": {Code: "order-code-002"},
@@ -68,18 +73,23 @@ func Test_orderStore_Save(t *testing.T) {
 			wantStore: map[string]*Order{
 				"order-code-001": {Code: "order-code-001"},
 				"order-code-002": {Code: "order-code-002", ContractQuantity: 100},
-				"order-code-003": {Code: "order-code-003"},
-			}},
+				"order-code-003": {Code: "order-code-003"}},
+			wantSaveOrderCount: 1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			store := &orderStore{store: test.store}
+			store := &orderStore{store: test.store, db: test.db}
 			got1 := store.Save(test.arg1)
-			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantStore, got1, store.store)
+
+			time.Sleep(100 * time.Millisecond)
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantSaveOrderCount, test.db.SaveOrderCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantSaveOrderCount,
+					got1, store.store, test.db.SaveOrderCount)
 			}
 		})
 	}

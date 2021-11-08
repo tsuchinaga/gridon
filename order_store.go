@@ -13,6 +13,7 @@ type IOrderStore interface {
 
 // orderStore - 注文ストア
 type orderStore struct {
+	db    IDB
 	store map[string]*Order
 	mtx   sync.Mutex
 }
@@ -49,6 +50,8 @@ func (s *orderStore) Save(order *Order) error {
 	defer s.mtx.Unlock()
 
 	s.store[order.Code] = order
+
+	go s.db.SaveOrder(s.store[order.Code])
 
 	return nil
 }

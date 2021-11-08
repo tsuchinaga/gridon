@@ -15,6 +15,7 @@ type IStrategyStore interface {
 // strategyStore - 戦略ストア
 type strategyStore struct {
 	store map[string]*Strategy
+	db    IDB
 	mtx   sync.Mutex
 }
 
@@ -37,11 +38,11 @@ func (s *strategyStore) AddStrategyCash(strategyCode string, cashDiff float64) e
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	_, ok := s.store[strategyCode]
-	if !ok {
-		return nil
+	if _, ok := s.store[strategyCode]; ok {
+		s.store[strategyCode].Cash += cashDiff
+
+		go s.db.SaveStrategy(s.store[strategyCode])
 	}
-	s.store[strategyCode].Cash += cashDiff
 
 	return nil
 }
@@ -54,6 +55,8 @@ func (s *strategyStore) SetContract(strategyCode string, contractPrice float64, 
 	if _, ok := s.store[strategyCode]; ok {
 		s.store[strategyCode].LastContractPrice = contractPrice
 		s.store[strategyCode].LastContractDateTime = contractDateTime
+
+		go s.db.SaveStrategy(s.store[strategyCode])
 	}
 
 	return nil

@@ -16,6 +16,7 @@ type IPositionStore interface {
 
 // positionStore - ポジションストア
 type positionStore struct {
+	db    IDB
 	store map[string]*Position
 	mtx   sync.Mutex
 }
@@ -31,6 +32,8 @@ func (s *positionStore) Save(position *Position) error {
 
 	s.store[position.Code] = position
 
+	go s.db.SavePosition(s.store[position.Code])
+
 	return nil
 }
 
@@ -42,6 +45,8 @@ func (s *positionStore) ExitContract(positionCode string, quantity float64) erro
 	if _, ok := s.store[positionCode]; ok {
 		s.store[positionCode].OwnedQuantity -= quantity
 		s.store[positionCode].HoldQuantity -= quantity
+
+		go s.db.SavePosition(s.store[positionCode])
 	}
 
 	return nil
@@ -54,6 +59,8 @@ func (s *positionStore) Release(positionCode string, quantity float64) error {
 
 	if _, ok := s.store[positionCode]; ok {
 		s.store[positionCode].HoldQuantity -= quantity
+
+		go s.db.SavePosition(s.store[positionCode])
 	}
 
 	return nil
@@ -88,6 +95,8 @@ func (s *positionStore) Hold(positionCode string, quantity float64) error {
 
 	if _, ok := s.store[positionCode]; ok {
 		s.store[positionCode].HoldQuantity += quantity
+
+		go s.db.SavePosition(s.store[positionCode])
 	}
 
 	return nil
