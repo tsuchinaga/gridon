@@ -20,8 +20,23 @@ type testDB struct {
 	SavePosition1       error
 	SavePositionCount   int
 	SavePositionHistory []interface{}
+	GetStrategies1      []*Strategy
+	GetStrategies2      error
+	GetActiveOrders1    []*Order
+	GetActiveOrders2    error
+	GetActivePositions1 []*Position
+	GetActivePositions2 error
 }
 
+func (t *testDB) GetStrategies() ([]*Strategy, error) {
+	return t.GetStrategies1, t.GetStrategies2
+}
+func (t *testDB) GetActiveOrders() ([]*Order, error) {
+	return t.GetActiveOrders1, t.GetActiveOrders2
+}
+func (t *testDB) GetActivePositions() ([]*Position, error) {
+	return t.GetActivePositions1, t.GetActivePositions2
+}
 func (t *testDB) SaveStrategy(strategy *Strategy) error {
 	t.SaveStrategyHistory = append(t.SaveStrategyHistory, strategy)
 	t.SaveStrategyCount++

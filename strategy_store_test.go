@@ -216,3 +216,44 @@ func Test_strategyStore_GetByCode(t *testing.T) {
 		})
 	}
 }
+
+func Test_strategyStore_DeployFromDB(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		db        *testDB
+		want1     error
+		wantStore map[string]*Strategy
+	}{
+		{name: "dbがエラーを返したらエラーを返す",
+			db:        &testDB{GetStrategies2: ErrUnknown},
+			want1:     ErrUnknown,
+			wantStore: nil},
+		{name: "dbが空を返したらstoreを空にする",
+			db:        &testDB{GetStrategies1: []*Strategy{}},
+			want1:     nil,
+			wantStore: map[string]*Strategy{}},
+		{name: "dbが要素のある配列を返したらstoreに展開される",
+			db: &testDB{GetStrategies1: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-002"},
+				{Code: "strategy-code-003"}}},
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"}}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &strategyStore{db: test.db}
+			got1 := store.DeployFromDB()
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantStore, got1, store.store)
+			}
+		})
+	}
+}

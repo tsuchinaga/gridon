@@ -21,6 +21,25 @@ type positionStore struct {
 	mtx   sync.Mutex
 }
 
+// DeployFromDB - DBからmapに展開する
+func (s *positionStore) DeployFromDB() error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	positions, err := s.db.GetActivePositions()
+	if err != nil {
+		return err
+	}
+
+	store := make(map[string]*Position)
+	for _, position := range positions {
+		store[position.Code] = position
+	}
+	s.store = store
+
+	return nil
+}
+
 // Save - ポジションの保存
 func (s *positionStore) Save(position *Position) error {
 	if position == nil {

@@ -19,6 +19,24 @@ type strategyStore struct {
 	mtx   sync.Mutex
 }
 
+// DeployFromDB - DBからmapに展開する
+func (s *strategyStore) DeployFromDB() error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	strategies, err := s.db.GetStrategies()
+	if err != nil {
+		return err
+	}
+
+	store := make(map[string]*Strategy)
+	for _, strategy := range strategies {
+		store[strategy.Code] = strategy
+	}
+	s.store = store
+	return nil
+}
+
 // GetByCode - コードを指定して取り出す
 func (s *strategyStore) GetByCode(code string) (*Strategy, error) {
 	s.mtx.Lock()

@@ -18,6 +18,24 @@ type orderStore struct {
 	mtx   sync.Mutex
 }
 
+// DeployFromDB - DBからmapに展開する
+func (s *orderStore) DeployFromDB() error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	orders, err := s.db.GetActiveOrders()
+	if err != nil {
+		return err
+	}
+
+	store := make(map[string]*Order)
+	for _, order := range orders {
+		store[order.Code] = order
+	}
+	s.store = store
+	return nil
+}
+
 // GetActiveOrdersByStrategyCode - 戦略を指定して有効な注文を取り出す
 func (s *orderStore) GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error) {
 	s.mtx.Lock()

@@ -145,3 +145,44 @@ func Test_orderStore_GetActiveOrdersByStrategyCode(t *testing.T) {
 		})
 	}
 }
+
+func Test_orderStore_DeployFromDB(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		db        *testDB
+		want1     error
+		wantStore map[string]*Order
+	}{
+		{name: "dbがエラーを返したらエラーを返す",
+			db:        &testDB{GetActiveOrders2: ErrUnknown},
+			want1:     ErrUnknown,
+			wantStore: nil},
+		{name: "dbが空を返したらstoreを空にする",
+			db:        &testDB{GetActiveOrders1: []*Order{}},
+			want1:     nil,
+			wantStore: map[string]*Order{}},
+		{name: "dbが要素のある配列を返したらstoreに展開される",
+			db: &testDB{GetActiveOrders1: []*Order{
+				{Code: "order-code-001"},
+				{Code: "order-code-002"},
+				{Code: "order-code-003"}}},
+			want1: nil,
+			wantStore: map[string]*Order{
+				"order-code-001": {Code: "order-code-001"},
+				"order-code-002": {Code: "order-code-002"},
+				"order-code-003": {Code: "order-code-003"}}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &orderStore{db: test.db}
+			got1 := store.DeployFromDB()
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantStore, got1, store.store)
+			}
+		})
+	}
+}
