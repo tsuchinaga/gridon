@@ -1,5 +1,10 @@
 package gridon
 
+// newTick - 新しいtickの取得
+func newTick() ITick {
+	return &tick{}
+}
+
 // ITick - ティック計算のインターフェース
 type ITick interface {
 	GetTick(price float64) float64
@@ -7,8 +12,7 @@ type ITick interface {
 }
 
 // tick - ティック計算
-type tick struct {
-}
+type tick struct{}
 
 // GetTick - 1ティックの幅
 func (t *tick) GetTick(price float64) float64 {

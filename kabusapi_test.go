@@ -1386,3 +1386,13 @@ func Test_kabusAPI_SendOrder(t *testing.T) {
 		})
 	}
 }
+
+func Test_newKabusAPI(t *testing.T) {
+	t.Parallel()
+	kabucom := &testKabusServiceClient{}
+	want1 := &kabusAPI{kabucom: kabucom}
+	got1 := newKabusAPI(kabucom)
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}

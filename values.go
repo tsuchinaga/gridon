@@ -80,12 +80,52 @@ type GridStrategy struct {
 	EndTime       time.Time // 戦略動作終了時刻
 }
 
-// IsValid - グリッド戦略が有効かどうか
-func (v *GridStrategy) IsValid(now time.Time) bool {
+// IsRunnable - グリッド戦略が実行可能かどうか
+func (v *GridStrategy) IsRunnable(now time.Time) bool {
 	if !v.Runnable {
 		return false
 	}
 	start := time.Date(now.Year(), now.Month(), now.Day(), v.StartTime.Hour(), v.StartTime.Minute(), v.StartTime.Second(), v.StartTime.Nanosecond(), now.Location())
 	end := time.Date(now.Year(), now.Month(), now.Day(), v.EndTime.Hour(), v.EndTime.Minute(), v.EndTime.Second(), v.EndTime.Nanosecond(), now.Location())
 	return !now.Before(start) && now.Before(end)
+}
+
+// RebalanceStrategy - リバランス戦略
+type RebalanceStrategy struct {
+	Runnable bool        // 実行可能かどうか
+	Timings  []time.Time // タイミング(時分)の一覧
+}
+
+// IsRunnable - グリッド戦略が実行可能かどうか
+func (v *RebalanceStrategy) IsRunnable(now time.Time) bool {
+	if !v.Runnable {
+		return false
+	}
+
+	for _, t := range v.Timings {
+		if now.Hour() == t.Hour() && now.Minute() == t.Minute() {
+			return true
+		}
+	}
+	return false
+}
+
+// ExitStrategy - 全エグジット戦略
+type ExitStrategy struct {
+	Runnable bool        // 実行可能かどうか
+	Timings  []time.Time // タイミング(時分)の一覧
+}
+
+// IsRunnable - 全エグジット戦略が実行可能かどうか
+func (v *ExitStrategy) IsRunnable(now time.Time) bool {
+	if !v.Runnable {
+		return false
+	}
+
+	for _, t := range v.Timings {
+		if now.Hour() == t.Hour() && now.Minute() == t.Minute() {
+			return true
+		}
+	}
+	return false
 }

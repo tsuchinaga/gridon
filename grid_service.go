@@ -4,8 +4,19 @@ import (
 	"time"
 )
 
+// newGridService - 新しいグリッドサービスの取得
+func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService) IGridService {
+	return &gridService{
+		clock:        clock,
+		tick:         tick,
+		kabusAPI:     kabusAPI,
+		orderService: orderService,
+	}
+}
+
 // IGridService - グリッドサービスのインターフェース
 type IGridService interface {
+	Leveling(strategy *Strategy) error
 }
 
 // gridService - グリッドサービス
@@ -23,7 +34,7 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 	}
 
 	// グリッド戦略が無効なら抜ける
-	if !strategy.GridStrategy.IsValid(s.clock.Now()) {
+	if !strategy.GridStrategy.IsRunnable(s.clock.Now()) {
 		return nil
 	}
 

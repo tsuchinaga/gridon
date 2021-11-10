@@ -186,3 +186,15 @@ func Test_orderStore_DeployFromDB(t *testing.T) {
 		})
 	}
 }
+
+func Test_getOrderStore(t *testing.T) {
+	t.Parallel()
+
+	db := &testDB{}
+	want1 := &orderStore{store: map[string]*Order{}, db: db}
+	got1 := getOrderStore(db)
+
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}

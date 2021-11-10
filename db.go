@@ -3,6 +3,7 @@ package gridon
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/types"
@@ -10,6 +11,25 @@ import (
 	"github.com/genjidb/genji"
 	gerrors "github.com/genjidb/genji/errors"
 )
+
+var (
+	dbSingleton    IDB
+	dbSingletonMtx sync.Mutex
+)
+
+// getDB - dbの取得
+func getDB(path string) (IDB, error) {
+	dbSingletonMtx.Lock()
+	defer dbSingletonMtx.Unlock()
+
+	gdb, err := openDB(path)
+	if err != nil {
+		return nil, err
+	}
+	dbSingleton = &db{db: gdb}
+
+	return dbSingleton, nil
+}
 
 // openDB - genjiDBを開き、初期セットアップをする
 func openDB(path string) (*genji.DB, error) {

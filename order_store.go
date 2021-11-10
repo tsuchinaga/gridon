@@ -5,8 +5,29 @@ import (
 	"sync"
 )
 
+var (
+	orderStoreSingleton    IOrderStore
+	orderStoreSingletonMtx sync.Mutex
+)
+
+// getOrderStore - 注文ストアの取得
+func getOrderStore(db IDB) IOrderStore {
+	orderStoreSingletonMtx.Lock()
+	defer orderStoreSingletonMtx.Unlock()
+
+	if orderStoreSingleton == nil {
+		orderStoreSingleton = &orderStore{
+			db:    db,
+			store: map[string]*Order{},
+		}
+	}
+
+	return orderStoreSingleton
+}
+
 // IOrderStore - 注文ストアのインターフェース
 type IOrderStore interface {
+	DeployFromDB() error
 	GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error)
 	Save(order *Order) error
 }

@@ -2,11 +2,24 @@ package gridon
 
 import "math"
 
+// newRebalanceService - 新しいリバランスサービスの取得
+func newRebalanceService(clock IClock, kabusAPI IKabusAPI, positionStore IPositionStore, orderService IOrderService) IRebalanceService {
+	return &rebalanceService{
+		clock:         clock,
+		kabusAPI:      kabusAPI,
+		positionStore: positionStore,
+		orderService:  orderService,
+	}
+}
+
 // IRebalanceService - リバランスサービスのインターフェース
-type IRebalanceService interface{}
+type IRebalanceService interface {
+	Rebalance(strategy *Strategy) error
+}
 
 // rebalanceService - リバランスサービス
 type rebalanceService struct {
+	clock         IClock
 	kabusAPI      IKabusAPI
 	positionStore IPositionStore
 	orderService  IOrderService
@@ -16,6 +29,10 @@ type rebalanceService struct {
 func (s *rebalanceService) Rebalance(strategy *Strategy) error {
 	if strategy == nil {
 		return ErrNilArgument
+	}
+
+	if !strategy.RebalanceStrategy.IsRunnable(s.clock.Now()) {
+		return nil
 	}
 
 	symbol, err := s.kabusAPI.GetSymbol(strategy.SymbolCode, strategy.Exchange)

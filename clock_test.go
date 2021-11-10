@@ -1,6 +1,7 @@
 package gridon
 
 import (
+	"reflect"
 	"testing"
 	"time"
 )
@@ -21,5 +22,14 @@ func Test_clock_Now(t *testing.T) {
 	got := clock.Now()
 	if want.After(got) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
+	}
+}
+
+func Test_newClock(t *testing.T) {
+	t.Parallel()
+	want1 := &clock{}
+	got1 := newClock()
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
 }

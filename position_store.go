@@ -5,8 +5,29 @@ import (
 	"sync"
 )
 
+var (
+	positionStoreSingleton    IPositionStore
+	positionStoreSingletonMtx sync.Mutex
+)
+
+// getPositionStore - ポジションストアの取得
+func getPositionStore(db IDB) IPositionStore {
+	positionStoreSingletonMtx.Lock()
+	defer positionStoreSingletonMtx.Unlock()
+
+	if positionStoreSingleton == nil {
+		positionStoreSingleton = &positionStore{
+			db:    db,
+			store: map[string]*Position{},
+		}
+	}
+
+	return positionStoreSingleton
+}
+
 // IPositionStore - ポジションストアのインターフェース
 type IPositionStore interface {
+	DeployFromDB() error
 	Save(position *Position) error
 	ExitContract(positionCode string, quantity float64) error
 	Release(positionCode string, quantity float64) error

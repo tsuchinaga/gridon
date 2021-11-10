@@ -257,3 +257,122 @@ func Test_strategyStore_DeployFromDB(t *testing.T) {
 		})
 	}
 }
+
+func Test_strategyStore_GetStrategies(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		store map[string]*Strategy
+		want1 []*Strategy
+		want2 error
+	}{
+		{name: "storeがnilなら空配列が返される",
+			store: nil,
+			want1: []*Strategy{},
+			want2: nil},
+		{name: "storeが空配列なら空配列が返される",
+			store: map[string]*Strategy{},
+			want1: []*Strategy{},
+			want2: nil},
+		{name: "storeにある要素がコードの昇順で返される",
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			want1: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-002"},
+				{Code: "strategy-code-003"}},
+			want2: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &strategyStore{store: test.store}
+			got1, got2 := store.GetStrategies()
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
+			}
+		})
+	}
+}
+
+func Test_getStrategyStore(t *testing.T) {
+	t.Parallel()
+
+	db := &testDB{}
+	want1 := &strategyStore{store: map[string]*Strategy{}, db: db}
+	got1 := getStrategyStore(db)
+
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}
+
+func Test_strategyStore_Save(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		db                    *testDB
+		name                  string
+		store                 map[string]*Strategy
+		arg1                  *Strategy
+		want1                 error
+		wantStore             map[string]*Strategy
+		wantSaveStrategyCount int
+	}{
+		{name: "引数がnilならエラー",
+			db:        &testDB{},
+			store:     map[string]*Strategy{},
+			arg1:      nil,
+			want1:     ErrNilArgument,
+			wantStore: map[string]*Strategy{}},
+		{name: "同一コードの注文がなければ追加",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  &Strategy{Code: "strategy-code-004"},
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+				"strategy-code-004": {Code: "strategy-code-004"}},
+			wantSaveStrategyCount: 1},
+		{name: "同一コードの注文があれば上書き",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  &Strategy{Code: "strategy-code-002", Cash: 100},
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002", Cash: 100},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			wantSaveStrategyCount: 1},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &strategyStore{store: test.store, db: test.db}
+			got1 := store.Save(test.arg1)
+
+			time.Sleep(100 * time.Millisecond)
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantSaveStrategyCount, test.db.SaveStrategyCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantSaveStrategyCount,
+					got1, store.store, test.db.SaveStrategyCount)
+			}
+		})
+	}
+}

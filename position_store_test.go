@@ -394,3 +394,15 @@ func Test_positionStore_DeployFromDB(t *testing.T) {
 		})
 	}
 }
+
+func Test_getPositionStore(t *testing.T) {
+	t.Parallel()
+
+	db := &testDB{}
+	want1 := &positionStore{store: map[string]*Position{}, db: db}
+	got1 := getPositionStore(db)
+
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}

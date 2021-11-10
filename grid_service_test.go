@@ -494,3 +494,21 @@ func Test_gridService_Leveling(t *testing.T) {
 		})
 	}
 }
+
+func Test_newGridService(t *testing.T) {
+	t.Parallel()
+	clock := &testClock{}
+	tick := &tick{}
+	kabusAPI := &testKabusAPI{}
+	orderService := &testOrderService{}
+	want1 := &gridService{
+		clock:        clock,
+		tick:         tick,
+		kabusAPI:     kabusAPI,
+		orderService: orderService,
+	}
+	got1 := newGridService(clock, tick, kabusAPI, orderService)
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}

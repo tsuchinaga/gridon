@@ -1,5 +1,15 @@
 package gridon
 
+// newContractService - 新しい約定管理サービスの取得
+func newContractService(kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore) IContractService {
+	return &contractService{
+		kabusAPI:      kabusAPI,
+		strategyStore: strategyStore,
+		orderStore:    orderStore,
+		positionStore: positionStore,
+	}
+}
+
 // IContractService - 約定管理サービスのインターフェース
 type IContractService interface {
 	Confirm(strategy *Strategy) error

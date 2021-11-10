@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func Test_rebalanceService_rebalanceQuantity(t *testing.T) {
@@ -70,6 +71,7 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                   string
+		clock                  *testClock
 		kabusAPI               *testKabusAPI
 		positionStore          *testPositionStore
 		orderService           *testOrderService
@@ -79,24 +81,35 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 		wantExitMarketHistory  []interface{}
 	}{
 		{name: "引数がnilならエラー",
+			clock:         &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI:      &testKabusAPI{},
 			positionStore: &testPositionStore{},
 			orderService:  &testOrderService{},
 			arg1:          nil,
 			want1:         ErrNilArgument},
-		{name: "銘柄取得に失敗したらエラー",
+		{name: "戦略が実行可能でなければ何もせずに終了",
+			clock:         &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI:      &testKabusAPI{GetSymbol2: ErrUnknown},
 			positionStore: &testPositionStore{},
 			orderService:  &testOrderService{},
-			arg1:          &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou},
+			arg1:          &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, RebalanceStrategy: RebalanceStrategy{Runnable: false}},
+			want1:         nil},
+		{name: "銘柄取得に失敗したらエラー",
+			clock:         &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{GetSymbol2: ErrUnknown},
+			positionStore: &testPositionStore{},
+			orderService:  &testOrderService{},
+			arg1:          &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, RebalanceStrategy: RebalanceStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 8, 59, 0, 0, time.Local)}}},
 			want1:         ErrUnknown},
 		{name: "ポジション一覧取得に失敗したらエラー",
+			clock:         &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode2: ErrUnknown},
 			orderService:  &testOrderService{},
-			arg1:          &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou},
+			arg1:          &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, RebalanceStrategy: RebalanceStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 8, 59, 0, 0, time.Local)}}},
 			want1:         ErrUnknown},
 		{name: "rebalanceの数量が0なら何もせず終了",
+			clock:    &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2000, BidPrice: 2001, AskPrice: 1999}},
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
 				{Code: "position-code-001", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 10},
@@ -104,9 +117,10 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 				{Code: "position-code-003", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 25},
 			}},
 			orderService: &testOrderService{},
-			arg1:         &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 100_000},
+			arg1:         &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 100_000, RebalanceStrategy: RebalanceStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 8, 59, 0, 0, time.Local)}}},
 			want1:        nil},
 		{name: "rebalanceの数量が負の値ならExitを呼ぶ",
+			clock:    &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2000, BidPrice: 2001, AskPrice: 1999}},
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
 				{Code: "position-code-001", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 10},
@@ -114,10 +128,11 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 				{Code: "position-code-003", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 25},
 			}},
 			orderService:          &testOrderService{},
-			arg1:                  &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 50_000},
+			arg1:                  &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 50_000, RebalanceStrategy: RebalanceStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 8, 59, 0, 0, time.Local)}}},
 			want1:                 nil,
 			wantExitMarketHistory: []interface{}{"strategy-code-001", 13.0, SortOrderLatest}},
 		{name: "Exitで失敗したらエラー",
+			clock:    &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2000, BidPrice: 2001, AskPrice: 1999}},
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
 				{Code: "position-code-001", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 10},
@@ -125,10 +140,11 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 				{Code: "position-code-003", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 25},
 			}},
 			orderService:          &testOrderService{ExitMarket1: ErrUnknown},
-			arg1:                  &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 50_000},
+			arg1:                  &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 50_000, RebalanceStrategy: RebalanceStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 8, 59, 0, 0, time.Local)}}},
 			want1:                 ErrUnknown,
 			wantExitMarketHistory: []interface{}{"strategy-code-001", 13.0, SortOrderLatest}},
 		{name: "rebalanceの数量が正の値ならEntryを呼ぶ",
+			clock:    &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2000, BidPrice: 2001, AskPrice: 1999}},
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
 				{Code: "position-code-001", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 10},
@@ -136,10 +152,11 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 				{Code: "position-code-003", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 25},
 			}},
 			orderService:           &testOrderService{},
-			arg1:                   &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 150_000},
+			arg1:                   &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 150_000, RebalanceStrategy: RebalanceStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 8, 59, 0, 0, time.Local)}}},
 			want1:                  nil,
 			wantEntryMarketHistory: []interface{}{"strategy-code-001", 13.0}},
 		{name: "Entryで失敗したらエラー",
+			clock:    &testClock{Now1: time.Date(2021, 11, 10, 8, 59, 0, 0, time.Local)},
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2000, BidPrice: 2001, AskPrice: 1999}},
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
 				{Code: "position-code-001", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 10},
@@ -147,7 +164,7 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 				{Code: "position-code-003", StrategyCode: "strategy-code-001", Price: 2_000, OwnedQuantity: 25},
 			}},
 			orderService:           &testOrderService{EntryMarket1: ErrUnknown},
-			arg1:                   &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 150_000},
+			arg1:                   &Strategy{Code: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Cash: 150_000, RebalanceStrategy: RebalanceStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 8, 59, 0, 0, time.Local)}}},
 			want1:                  ErrUnknown,
 			wantEntryMarketHistory: []interface{}{"strategy-code-001", 13.0}},
 	}
@@ -156,7 +173,7 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			service := &rebalanceService{kabusAPI: test.kabusAPI, positionStore: test.positionStore, orderService: test.orderService}
+			service := &rebalanceService{clock: test.clock, kabusAPI: test.kabusAPI, positionStore: test.positionStore, orderService: test.orderService}
 			got1 := service.Rebalance(test.arg1)
 			if !errors.Is(got1, test.want1) ||
 				!reflect.DeepEqual(test.wantEntryMarketHistory, test.orderService.EntryMarketHistory) ||
@@ -169,5 +186,23 @@ func Test_rebalanceService_Rebalance(t *testing.T) {
 					got1, test.orderService.EntryMarketHistory, test.orderService.ExitMarketHistory)
 			}
 		})
+	}
+}
+
+func Test_newRebalanceService(t *testing.T) {
+	t.Parallel()
+	clock := &testClock{}
+	kabusAPI := &testKabusAPI{}
+	positionStore := &testPositionStore{}
+	orderService := &testOrderService{}
+	want1 := &rebalanceService{
+		clock:         clock,
+		kabusAPI:      kabusAPI,
+		positionStore: positionStore,
+		orderService:  orderService,
+	}
+	got1 := newRebalanceService(clock, kabusAPI, positionStore, orderService)
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
 }

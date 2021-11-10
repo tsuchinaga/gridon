@@ -9,6 +9,10 @@ import (
 	"gitlab.com/tsuchinaga/kabus-grpc-server/kabuspb"
 )
 
+func newKabusAPI(kabucom kabuspb.KabusServiceClient) IKabusAPI {
+	return &kabusAPI{kabucom: kabucom}
+}
+
 // IKabusAPI - kabuステーションAPIのインターフェース
 type IKabusAPI interface {
 	GetSymbol(symbolCode string, exchange Exchange) (*Symbol, error)

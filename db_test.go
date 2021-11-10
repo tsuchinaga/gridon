@@ -405,3 +405,21 @@ func Test_db_GetActivePositions(t *testing.T) {
 		})
 	}
 }
+
+func Test_getDB(t *testing.T) {
+	t.Parallel()
+
+	gdb, err := openDB(":memory:")
+	if err != nil {
+		t.Errorf("%s error\nerror: %s\n", t.Name(), err)
+	}
+	want1 := &db{db: gdb}
+	got1, err := getDB(":memory:")
+	if err != nil {
+		t.Errorf("%s error\nerror: %s\n", t.Name(), err)
+	}
+
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}

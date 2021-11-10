@@ -77,3 +77,12 @@ func Test_tick_TickAddedPrice(t *testing.T) {
 		})
 	}
 }
+
+func Test_newTick(t *testing.T) {
+	t.Parallel()
+	want1 := &tick{}
+	got1 := newTick()
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}

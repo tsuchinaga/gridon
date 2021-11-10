@@ -33,7 +33,7 @@ func Test_HoldPosition_LeaveQuantity(t *testing.T) {
 	}
 }
 
-func Test_GridStrategy_IsValid(t *testing.T) {
+func Test_GridStrategy_IsRunnable(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name         string
@@ -93,7 +93,115 @@ func Test_GridStrategy_IsValid(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got1 := test.gridStrategy.IsValid(test.arg1)
+			got1 := test.gridStrategy.IsRunnable(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_RebalanceStrategy_IsRunnable(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name              string
+		rebalanceStrategy RebalanceStrategy
+		arg1              time.Time
+		want1             bool
+	}{
+		{name: "実行不可ならfalse",
+			rebalanceStrategy: RebalanceStrategy{Runnable: false},
+			arg1:              time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
+			want1:             false},
+		{name: "実行可能でも、実行タイミングがnilならfalse",
+			rebalanceStrategy: RebalanceStrategy{
+				Runnable: true,
+				Timings:  nil},
+			arg1:  time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
+			want1: false},
+		{name: "実行可能でも、実行タイミングが空配列ならfalse",
+			rebalanceStrategy: RebalanceStrategy{
+				Runnable: true,
+				Timings:  []time.Time{}},
+			arg1:  time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
+			want1: false},
+		{name: "実行可能でも、実行タイミングに引数と同じ時分がなければfalse",
+			rebalanceStrategy: RebalanceStrategy{
+				Runnable: true,
+				Timings: []time.Time{
+					time.Date(0, 1, 1, 11, 25, 0, 0, time.Local),
+					time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+			arg1:  time.Date(2021, 11, 10, 10, 0, 0, 0, time.Local),
+			want1: false},
+		{name: "実行可能でも、実行タイミングに引数と同じ時分があればtrue",
+			rebalanceStrategy: RebalanceStrategy{
+				Runnable: true,
+				Timings: []time.Time{
+					time.Date(0, 1, 1, 11, 25, 0, 0, time.Local),
+					time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+			arg1:  time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local),
+			want1: true},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.rebalanceStrategy.IsRunnable(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_ExitStrategy_IsRunnable(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name            string
+		allExitStrategy ExitStrategy
+		arg1            time.Time
+		want1           bool
+	}{
+		{name: "実行不可ならfalse",
+			allExitStrategy: ExitStrategy{Runnable: false},
+			arg1:            time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
+			want1:           false},
+		{name: "実行可能でも、実行タイミングがnilならfalse",
+			allExitStrategy: ExitStrategy{
+				Runnable: true,
+				Timings:  nil},
+			arg1:  time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
+			want1: false},
+		{name: "実行可能でも、実行タイミングが空配列ならfalse",
+			allExitStrategy: ExitStrategy{
+				Runnable: true,
+				Timings:  []time.Time{}},
+			arg1:  time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
+			want1: false},
+		{name: "実行可能でも、実行タイミングに引数と同じ時分がなければfalse",
+			allExitStrategy: ExitStrategy{
+				Runnable: true,
+				Timings: []time.Time{
+					time.Date(0, 1, 1, 11, 25, 0, 0, time.Local),
+					time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+			arg1:  time.Date(2021, 11, 10, 10, 0, 0, 0, time.Local),
+			want1: false},
+		{name: "実行可能でも、実行タイミングに引数と同じ時分があればtrue",
+			allExitStrategy: ExitStrategy{
+				Runnable: true,
+				Timings: []time.Time{
+					time.Date(0, 1, 1, 11, 25, 0, 0, time.Local),
+					time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+			arg1:  time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local),
+			want1: true},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.allExitStrategy.IsRunnable(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
 			}

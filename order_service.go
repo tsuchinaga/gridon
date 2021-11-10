@@ -6,6 +6,17 @@ import (
 	"sort"
 )
 
+// newOrderService - 新しい注文サービスの取得
+func newOrderService(clock IClock, kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore) IOrderService {
+	return &orderService{
+		clock:         clock,
+		kabusAPI:      kabusAPI,
+		strategyStore: strategyStore,
+		orderStore:    orderStore,
+		positionStore: positionStore,
+	}
+}
+
 // IOrderService - 注文サービスのインターフェース
 type IOrderService interface {
 	GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error)
@@ -20,11 +31,11 @@ type IOrderService interface {
 
 // orderService - 注文サービス
 type orderService struct {
+	clock         IClock
 	kabusAPI      IKabusAPI
+	strategyStore IStrategyStore
 	orderStore    IOrderStore
 	positionStore IPositionStore
-	strategyStore IStrategyStore
-	clock         IClock
 }
 
 // GetActiveOrdersByStrategyCode - 戦略を指定して有効な注文を取り出す
@@ -121,6 +132,10 @@ func (s *orderService) CancelAll(strategy *Strategy) error {
 		return ErrNilArgument
 	}
 
+	if !strategy.ExitStrategy.IsRunnable(s.clock.Now()) {
+		return nil
+	}
+
 	// 有効な注文を取り出す
 	orders, err := s.orderStore.GetActiveOrdersByStrategyCode(strategy.Code)
 	if err != nil {
@@ -141,6 +156,10 @@ func (s *orderService) CancelAll(strategy *Strategy) error {
 func (s *orderService) ExitAll(strategy *Strategy) error {
 	if strategy == nil {
 		return ErrNilArgument
+	}
+
+	if !strategy.ExitStrategy.IsRunnable(s.clock.Now()) {
+		return nil
 	}
 
 	// 保有中のポジションを取り出す

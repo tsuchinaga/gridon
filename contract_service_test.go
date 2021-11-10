@@ -830,3 +830,21 @@ func Test_contractService_Confirm(t *testing.T) {
 		})
 	}
 }
+
+func Test_newContractService(t *testing.T) {
+	t.Parallel()
+	kabusAPI := &testKabusAPI{}
+	strategyStore := &strategyStore{}
+	orderStore := &orderStore{}
+	positionStore := &positionStore{}
+	want1 := &contractService{
+		kabusAPI:      kabusAPI,
+		strategyStore: strategyStore,
+		orderStore:    orderStore,
+		positionStore: positionStore,
+	}
+	got1 := newContractService(kabusAPI, strategyStore, orderStore, positionStore)
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}
