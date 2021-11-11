@@ -129,3 +129,23 @@ func (v *ExitStrategy) IsRunnable(now time.Time) bool {
 	}
 	return false
 }
+
+// CancelStrategy - 全取消戦略
+type CancelStrategy struct {
+	Runnable bool        // 実行可能かどうか
+	Timings  []time.Time // タイミング(時分)の一覧
+}
+
+// IsRunnable - 全エグジット戦略が実行可能かどうか
+func (v *CancelStrategy) IsRunnable(now time.Time) bool {
+	if !v.Runnable {
+		return false
+	}
+
+	for _, t := range v.Timings {
+		if now.Hour() == t.Hour() && now.Minute() == t.Minute() {
+			return true
+		}
+	}
+	return false
+}

@@ -135,10 +135,15 @@ func (s *service) contractTask() {
 		strategy := strategy
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
+
 			if err := s.contractService.Confirm(strategy); err != nil {
 				s.logger.Warning(fmt.Errorf("%s の約定確認処理でエラーが発生しました: %w", strategy.Code, err))
 			}
-			wg.Done()
+
+			if err := s.gridService.Leveling(strategy); err != nil {
+				s.logger.Warning(fmt.Errorf("%s のグリッド処理でエラーが発生しました: %w", strategy.Code, err))
+			}
 		}()
 	}
 	wg.Wait()
@@ -179,12 +184,9 @@ func (s *service) orderTask() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
 			if err := s.rebalanceService.Rebalance(strategy); err != nil {
 				s.logger.Warning(fmt.Errorf("%s のリバランス処理でエラーが発生しました: %w", strategy.Code, err))
-			}
-
-			if err := s.gridService.Leveling(strategy); err != nil {
-				s.logger.Warning(fmt.Errorf("%s のグリッド処理でエラーが発生しました: %w", strategy.Code, err))
 			}
 
 			if err := s.orderService.CancelAll(strategy); err != nil {

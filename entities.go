@@ -18,6 +18,7 @@ type Strategy struct {
 	LastContractDateTime time.Time         // 最終約定日時
 	RebalanceStrategy    RebalanceStrategy // リバランス戦略
 	GridStrategy         GridStrategy      // グリッド戦略
+	CancelStrategy       CancelStrategy    // 全取消戦略
 	ExitStrategy         ExitStrategy      // 全エグジット戦略
 	Account              Account           // 口座情報
 }

@@ -132,7 +132,7 @@ func (s *orderService) CancelAll(strategy *Strategy) error {
 		return ErrNilArgument
 	}
 
-	if !strategy.ExitStrategy.IsRunnable(s.clock.Now()) {
+	if !strategy.CancelStrategy.IsRunnable(s.clock.Now()) {
 		return nil
 	}
 
