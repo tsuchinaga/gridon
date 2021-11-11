@@ -72,12 +72,11 @@ type Account struct {
 
 // GridStrategy - グリッド戦略
 type GridStrategy struct {
-	Runnable      bool      // 実行可能かどうか
-	Width         int       // グリッド幅(tick数)
-	Quantity      float64   // 1グリッドに乗せる数量
-	NumberOfGrids int       // 指値注文を入れておくグリッドの本数
-	StartTime     time.Time // 戦略動作開始時刻
-	EndTime       time.Time // 戦略動作終了時刻
+	Runnable      bool        // 実行可能かどうか
+	Width         int         // グリッド幅(tick数)
+	Quantity      float64     // 1グリッドに乗せる数量
+	NumberOfGrids int         // 指値注文を入れておくグリッドの本数
+	TimeRanges    []TimeRange // 戦略動作時刻範囲
 }
 
 // IsRunnable - グリッド戦略が実行可能かどうか
@@ -85,9 +84,14 @@ func (v *GridStrategy) IsRunnable(now time.Time) bool {
 	if !v.Runnable {
 		return false
 	}
-	start := time.Date(now.Year(), now.Month(), now.Day(), v.StartTime.Hour(), v.StartTime.Minute(), v.StartTime.Second(), v.StartTime.Nanosecond(), now.Location())
-	end := time.Date(now.Year(), now.Month(), now.Day(), v.EndTime.Hour(), v.EndTime.Minute(), v.EndTime.Second(), v.EndTime.Nanosecond(), now.Location())
-	return !now.Before(start) && now.Before(end)
+
+	for _, tr := range v.TimeRanges {
+		if tr.In(now) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // RebalanceStrategy - リバランス戦略
@@ -148,4 +152,23 @@ func (v *CancelStrategy) IsRunnable(now time.Time) bool {
 		}
 	}
 	return false
+}
+
+// TimeRange - 時間の範囲
+type TimeRange struct {
+	Start time.Time // 開始時刻
+	End   time.Time // 終了時刻
+}
+
+// In - 引数の時刻が範囲内かどうか
+func (v *TimeRange) In(target time.Time) bool {
+	start := time.Date(0, 1, 1, v.Start.Hour(), v.Start.Minute(), v.Start.Second(), v.Start.Nanosecond(), v.Start.Location())
+	end := time.Date(0, 1, 1, v.End.Hour(), v.End.Minute(), v.End.Second(), v.End.Nanosecond(), v.End.Location())
+	t := time.Date(0, 1, 1, target.Hour(), target.Minute(), target.Second(), target.Nanosecond(), target.Location())
+
+	if start.Before(end) {
+		return !t.Before(start) && t.Before(end)
+	} else {
+		return !t.Before(start) || t.Before(end)
+	}
 }

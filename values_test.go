@@ -47,44 +47,50 @@ func Test_GridStrategy_IsRunnable(t *testing.T) {
 			want1:        false},
 		{name: "開始時刻以前ならfalse",
 			gridStrategy: GridStrategy{
-				Runnable:  true,
-				StartTime: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-				EndTime:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
+				Runnable: true,
+				TimeRanges: []TimeRange{{
+					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 5, 8, 59, 59, 0, time.Local),
 			want1: false},
 		{name: "ちょうど開始時刻ならtrue",
 			gridStrategy: GridStrategy{
-				Runnable:  true,
-				StartTime: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-				EndTime:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
+				Runnable: true,
+				TimeRanges: []TimeRange{{
+					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local),
 			want1: true},
 		{name: "開始時刻以降ならtrue",
 			gridStrategy: GridStrategy{
-				Runnable:  true,
-				StartTime: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-				EndTime:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
+				Runnable: true,
+				TimeRanges: []TimeRange{{
+					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 5, 9, 0, 1, 0, time.Local),
 			want1: true},
 		{name: "終了時刻以前ならtrue",
 			gridStrategy: GridStrategy{
-				Runnable:  true,
-				StartTime: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-				EndTime:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
+				Runnable: true,
+				TimeRanges: []TimeRange{{
+					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 5, 14, 54, 59, 0, time.Local),
 			want1: true},
 		{name: "ちょうど終了時刻ならfalse",
 			gridStrategy: GridStrategy{
-				Runnable:  true,
-				StartTime: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-				EndTime:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
+				Runnable: true,
+				TimeRanges: []TimeRange{{
+					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 5, 14, 55, 0, 0, time.Local),
 			want1: false},
 		{name: "終了時刻以降ならfalse",
 			gridStrategy: GridStrategy{
-				Runnable:  true,
-				StartTime: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-				EndTime:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
+				Runnable: true,
+				TimeRanges: []TimeRange{{
+					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 5, 14, 55, 1, 0, time.Local),
 			want1: false},
 	}
@@ -256,6 +262,124 @@ func Test_CancelStrategy_IsRunnable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			got1 := test.cancelStrategy.IsRunnable(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_TimeRange_In(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		timeRange TimeRange
+		arg1      time.Time
+		want1     bool
+	}{
+		{name: "年月日は無視される",
+			timeRange: TimeRange{
+				Start: time.Date(2021, 11, 11, 9, 0, 0, 0, time.Local),
+				End:   time.Date(2021, 10, 1, 11, 30, 0, 0, time.Local)},
+			arg1:  time.Date(2022, 1, 1, 10, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "start < endのとき、引数 < startならfalse",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 8, 59, 59, 999999999, time.Local),
+			want1: false},
+		{name: "start < endのとき、start == 引数ならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "start < endのとき、start < 引数 < endならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 10, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "start < endのとき、引数 == endならfalse",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 11, 30, 0, 0, time.Local),
+			want1: false},
+		{name: "start < endのとき、end < 引数ならfalse",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 12, 0, 0, 0, time.Local),
+			want1: false},
+		{name: "end < startのとき、引数 == 00:00:00ならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 0, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "end < startのとき、00:00:00 < 引数 < endならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 8, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "end < startのとき、引数 == endならfalse",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+			want1: false},
+		{name: "end < startのとき、end < 引数 < startならfalse",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 10, 0, 0, 0, time.Local),
+			want1: false},
+		{name: "end < startのとき、引数 == startならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "end < startのとき、start < 引数 < 23:59:59ならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 16, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "end < startのとき、引数 == 23:59:59ならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 23, 59, 59, 999999999, time.Local),
+			want1: true},
+		{name: "start == endのとき、引数 == 00:00:00ならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 0, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "start == endのとき、引数 == start == endならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "start == endのとき、引数 == 23:59:59ならtrue",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+			arg1:  time.Date(0, 1, 1, 23, 59, 59, 999999999, time.Local),
+			want1: true},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.timeRange.In(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
 			}
