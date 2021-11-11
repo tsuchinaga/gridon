@@ -18,7 +18,7 @@ var (
 )
 
 // getDB - dbの取得
-func getDB(path string) (IDB, error) {
+func getDB(path string, logger ILogger) (IDB, error) {
 	dbSingletonMtx.Lock()
 	defer dbSingletonMtx.Unlock()
 
@@ -26,7 +26,10 @@ func getDB(path string) (IDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbSingleton = &db{db: gdb}
+	dbSingleton = &db{
+		db:     gdb,
+		logger: logger,
+	}
 
 	return dbSingleton, nil
 }
@@ -75,7 +78,8 @@ type IDB interface {
 
 // db - データベース
 type db struct {
-	db *genji.DB
+	db     *genji.DB
+	logger ILogger
 }
 
 func (d *db) wrapErr(err error) error {
@@ -118,6 +122,8 @@ func (d *db) GetStrategies() ([]*Strategy, error) {
 
 // SaveStrategy - 戦略の保存
 func (d *db) SaveStrategy(strategy *Strategy) error {
+	d.logger.Notice(fmt.Sprintf("save strategy: %+v", strategy))
+
 	tx, err := d.db.Begin(true)
 	if err != nil {
 		return d.wrapErr(err)
@@ -162,6 +168,8 @@ func (d *db) GetActiveOrders() ([]*Order, error) {
 
 // SaveOrder - 注文の保存
 func (d *db) SaveOrder(order *Order) error {
+	d.logger.Notice(fmt.Sprintf("save order: %+v", order))
+
 	tx, err := d.db.Begin(true)
 	if err != nil {
 		return d.wrapErr(err)
@@ -206,6 +214,8 @@ func (d *db) GetActivePositions() ([]*Position, error) {
 
 // SavePosition - ポジションの保存
 func (d *db) SavePosition(position *Position) error {
+	d.logger.Notice(fmt.Sprintf("save position: %+v", position))
+
 	tx, err := d.db.Begin(true)
 	if err != nil {
 		return d.wrapErr(err)

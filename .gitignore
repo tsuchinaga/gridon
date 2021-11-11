@@ -3,6 +3,6 @@
 
 cover.out
 *.exe
-*.log
-*.db
+*.log*
+*.db*
 builds

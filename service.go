@@ -17,7 +17,7 @@ func NewService() (IService, error) {
 		return nil, err
 	}
 
-	db, err := getDB("gridon.db")
+	db, err := getDB("gridon.db", logger)
 	if err != nil {
 		return nil, err
 	}
@@ -120,9 +120,6 @@ func (s *service) contractScheduler() {
 
 // contractTask - 約定確認のタスク
 func (s *service) contractTask() {
-	s.logger.Notice("約定確認処理開始")
-	defer s.logger.Notice("約定確認処理終了")
-
 	// 戦略一覧の取得
 	strategies, err := s.strategyStore.GetStrategies()
 	if err != nil {
@@ -168,9 +165,6 @@ func (s *service) orderScheduler() {
 
 // orderTask - 注文のタスク
 func (s *service) orderTask() {
-	s.logger.Notice("注文処理開始")
-	defer s.logger.Notice("注文処理開始")
-
 	// 戦略一覧の取得
 	strategies, err := s.strategyStore.GetStrategies()
 	if err != nil {

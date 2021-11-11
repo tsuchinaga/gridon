@@ -57,12 +57,14 @@ func Test_db_SaveStrategy(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name           string
+		logger         *testLogger
 		dataset        []*Strategy
 		arg            *Strategy
 		want           error
 		wantStrategies []*Strategy
 	}{
 		{name: "同じコードのデータがなければinsertされる",
+			logger: &testLogger{},
 			dataset: []*Strategy{
 				{Code: "strategy-code-001"},
 				{Code: "strategy-code-002"},
@@ -77,6 +79,7 @@ func Test_db_SaveStrategy(t *testing.T) {
 				{Code: "strategy-code-004"},
 			}},
 		{name: "同じコードのデータがあったら上書きされる",
+			logger: &testLogger{},
 			dataset: []*Strategy{
 				{Code: "strategy-code-001"},
 				{Code: "strategy-code-002"},
@@ -103,7 +106,7 @@ func Test_db_SaveStrategy(t *testing.T) {
 				}
 			}
 
-			db := &db{db: d}
+			db := &db{db: d, logger: test.logger}
 			got := db.SaveStrategy(test.arg)
 
 			strategies := make([]*Strategy, 0)
@@ -127,12 +130,14 @@ func Test_db_SaveOrder(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
+		logger     *testLogger
 		dataset    []*Order
 		arg        *Order
 		want       error
 		wantOrders []*Order
 	}{
 		{name: "同じコードのデータがなければinsertされる",
+			logger: &testLogger{},
 			dataset: []*Order{
 				{Code: "order-code-001"},
 				{Code: "order-code-002"},
@@ -147,6 +152,7 @@ func Test_db_SaveOrder(t *testing.T) {
 				{Code: "order-code-004"},
 			}},
 		{name: "同じコードのデータがあったら上書きされる",
+			logger: &testLogger{},
 			dataset: []*Order{
 				{Code: "order-code-001"},
 				{Code: "order-code-002"},
@@ -173,7 +179,7 @@ func Test_db_SaveOrder(t *testing.T) {
 				}
 			}
 
-			db := &db{db: d}
+			db := &db{db: d, logger: test.logger}
 			got := db.SaveOrder(test.arg)
 
 			orders := make([]*Order, 0)
@@ -197,12 +203,14 @@ func Test_db_SavePosition(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name          string
+		logger        *testLogger
 		dataset       []*Position
 		arg           *Position
 		want          error
 		wantPositions []*Position
 	}{
 		{name: "同じコードのデータがなければinsertされる",
+			logger: &testLogger{},
 			dataset: []*Position{
 				{Code: "position-code-001"},
 				{Code: "position-code-002"},
@@ -217,6 +225,7 @@ func Test_db_SavePosition(t *testing.T) {
 				{Code: "position-code-004"},
 			}},
 		{name: "同じコードのデータがあったら上書きされる",
+			logger: &testLogger{},
 			dataset: []*Position{
 				{Code: "position-code-001"},
 				{Code: "position-code-002"},
@@ -243,7 +252,7 @@ func Test_db_SavePosition(t *testing.T) {
 				}
 			}
 
-			db := &db{db: d}
+			db := &db{db: d, logger: test.logger}
 			got := db.SavePosition(test.arg)
 
 			positions := make([]*Position, 0)
@@ -413,8 +422,9 @@ func Test_getDB(t *testing.T) {
 	if err != nil {
 		t.Errorf("%s error\nerror: %s\n", t.Name(), err)
 	}
-	want1 := &db{db: gdb}
-	got1, err := getDB(":memory:")
+	logger := &logger{}
+	want1 := &db{db: gdb, logger: logger}
+	got1, err := getDB(":memory:", logger)
 	if err != nil {
 		t.Errorf("%s error\nerror: %s\n", t.Name(), err)
 	}
