@@ -54,7 +54,6 @@ func openDB(path string) (*genji.DB, error) {
 		// positions
 		`create table if not exists positions`,
 		`create unique index if not exists positions_code on positions (code)`,
-		`create index if not exists positions_strategy_code_symbol_code on positions (strategycode, symbolcode)`,
 	}
 
 	for _, sql := range sqlList {
@@ -131,11 +130,13 @@ func (d *db) SaveStrategy(strategy *Strategy) error {
 
 	if err := tx.Exec(`delete from strategies where code = ?`, strategy.Code); err != nil {
 		_ = tx.Rollback()
+		d.logger.Warning(err)
 		return d.wrapErr(err)
 	}
 
 	if err := tx.Exec(`insert into strategies values ?`, strategy); err != nil {
 		_ = tx.Rollback()
+		d.logger.Warning(err)
 		return d.wrapErr(err)
 	}
 
@@ -177,11 +178,13 @@ func (d *db) SaveOrder(order *Order) error {
 
 	if err := tx.Exec(`delete from orders where code = ?`, order.Code); err != nil {
 		_ = tx.Rollback()
+		d.logger.Warning(err)
 		return d.wrapErr(err)
 	}
 
 	if err := tx.Exec(`insert into orders values ?`, order); err != nil {
 		_ = tx.Rollback()
+		d.logger.Warning(err)
 		return d.wrapErr(err)
 	}
 
@@ -223,11 +226,13 @@ func (d *db) SavePosition(position *Position) error {
 
 	if err := tx.Exec(`delete from positions where code = ?`, position.Code); err != nil {
 		_ = tx.Rollback()
+		d.logger.Warning(err)
 		return d.wrapErr(err)
 	}
 
 	if err := tx.Exec(`insert into positions values ?`, position); err != nil {
 		_ = tx.Rollback()
+		d.logger.Warning(err)
 		return d.wrapErr(err)
 	}
 
