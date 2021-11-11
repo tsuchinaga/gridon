@@ -75,15 +75,19 @@ type IService interface {
 
 // service - gridonサービス
 type service struct {
-	logger           ILogger
-	clock            IClock
-	strategyStore    IStrategyStore
-	orderStore       IOrderStore
-	positionStore    IPositionStore
-	contractService  IContractService
-	rebalanceService IRebalanceService
-	gridService      IGridService
-	orderService     IOrderService
+	logger             ILogger
+	clock              IClock
+	strategyStore      IStrategyStore
+	orderStore         IOrderStore
+	positionStore      IPositionStore
+	contractService    IContractService
+	rebalanceService   IRebalanceService
+	gridService        IGridService
+	orderService       IOrderService
+	contractRunning    bool
+	contractRunningMtx sync.Mutex
+	orderRunning       bool
+	orderRunningMtx    sync.Mutex
 }
 
 func (s *service) Start() error {
@@ -110,16 +114,40 @@ func (s *service) Start() error {
 func (s *service) contractScheduler() {
 	s.logger.Notice("約定確認スケジューラ起動")
 
-	// 1分のtickerを用意し5秒に1回非同期で処理を実行する
-	ticker := time.NewTicker(5 * time.Second)
+	// 4秒に1回非同期で処理を実行する
+	ticker := time.NewTicker(4 * time.Second)
 	for {
 		go s.contractTask()
 		<-ticker.C
 	}
 }
 
+// runnableContractTask - 約定確認タスクが実行可能かどうか、可能なら実行中にする
+func (s *service) runnableContractTask() bool {
+	s.contractRunningMtx.Lock()
+	defer s.contractRunningMtx.Unlock()
+
+	if s.contractRunning {
+		return false
+	}
+	s.contractRunning = true
+	return true
+}
+
+// finishContractTask - 約定確認タスクの実行状態を終了に更新する
+func (s *service) finishContractTask() {
+	s.contractRunningMtx.Lock()
+	defer s.contractRunningMtx.Unlock()
+	s.contractRunning = false
+}
+
 // contractTask - 約定確認のタスク
 func (s *service) contractTask() {
+	if !s.runnableContractTask() {
+		return
+	}
+	defer s.finishContractTask()
+
 	// 戦略一覧の取得
 	strategies, err := s.strategyStore.GetStrategies()
 	if err != nil {
@@ -155,7 +183,7 @@ func (s *service) orderScheduler() {
 	nextRun := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute()+1, 0, 0, now.Location())
 	time.Sleep(nextRun.Sub(now))
 
-	// 1分のtickerを用意し1分に1回非同期で処理を実行する
+	// 1分に1回非同期で処理を実行する
 	ticker := time.NewTicker(1 * time.Minute)
 	for {
 		go s.orderTask()
@@ -163,8 +191,32 @@ func (s *service) orderScheduler() {
 	}
 }
 
+// runnableOrderTask - 注文タスクが実行可能かどうか、可能なら実行中にする
+func (s *service) runnableOrderTask() bool {
+	s.orderRunningMtx.Lock()
+	defer s.orderRunningMtx.Unlock()
+
+	if s.orderRunning {
+		return false
+	}
+	s.orderRunning = true
+	return true
+}
+
+// finishOrderTask - 注文タスクの実行状態を終了に更新する
+func (s *service) finishOrderTask() {
+	s.orderRunningMtx.Lock()
+	defer s.orderRunningMtx.Unlock()
+	s.orderRunning = false
+}
+
 // orderTask - 注文のタスク
 func (s *service) orderTask() {
+	if !s.runnableOrderTask() {
+		return
+	}
+	defer s.finishOrderTask()
+
 	// 戦略一覧の取得
 	strategies, err := s.strategyStore.GetStrategies()
 	if err != nil {
