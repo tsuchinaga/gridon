@@ -283,6 +283,12 @@ func Test_TimeRange_In(t *testing.T) {
 				End:   time.Date(2021, 10, 1, 11, 30, 0, 0, time.Local)},
 			arg1:  time.Date(2022, 1, 1, 10, 0, 0, 0, time.Local),
 			want1: true},
+		{name: "ゼロ値はfalse",
+			timeRange: TimeRange{
+				Start: time.Date(0, 1, 1, 0, 0, 0, 0, time.Local),
+				End:   time.Date(0, 1, 1, 0, 0, 0, 0, time.Local)},
+			arg1:  time.Time{},
+			want1: false},
 		{name: "start < endのとき、引数 < startならfalse",
 			timeRange: TimeRange{
 				Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),

@@ -23,12 +23,22 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			arg1:     nil,
 			want1:    0,
 			want2:    ErrNilArgument},
+		{name: "グリッド戦略の実行時刻が指定されていなければデータ取得は無駄なのでエラー",
+			clock:    &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
+			kabusAPI: &testKabusAPI{},
+			arg1:     &Strategy{},
+			want1:    0,
+			want2:    ErrNotExistsTimeRange},
 		{name: "現在時刻が09:00:00で、最終約定日時が09:00:00なら、最終約定価格を返す",
 			clock:    &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
 			kabusAPI: &testKabusAPI{},
 			arg1: &Strategy{
 				LastContractDateTime: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local),
-				LastContractPrice:    2100},
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
 			want1: 2100,
 			want2: nil},
 		{name: "現在時刻が09:00:01で、最終約定日時が09:00:00なら、最終約定価格を返す",
@@ -36,7 +46,11 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			kabusAPI: &testKabusAPI{},
 			arg1: &Strategy{
 				LastContractDateTime: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local),
-				LastContractPrice:    2100},
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
 			want1: 2100,
 			want2: nil},
 		{name: "現在時刻が14:59:59で、最終約定日時が14:59:59なら、最終約定価格を返す",
@@ -44,7 +58,11 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			kabusAPI: &testKabusAPI{},
 			arg1: &Strategy{
 				LastContractDateTime: time.Date(2021, 11, 2, 14, 59, 59, 0, time.Local),
-				LastContractPrice:    2100},
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
 			want1: 2100,
 			want2: nil},
 		{name: "現在時刻が08:59:59で、最終約定日時が15:00:00なら、銘柄の現在値を返す",
@@ -52,7 +70,11 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
 			arg1: &Strategy{
 				LastContractDateTime: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100},
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
 			want1: 2105,
 			want2: nil},
 		{name: "現在時刻が09:00:00で、最終約定日時が前日なら、銘柄の現在値を返す",
@@ -60,7 +82,11 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
 			arg1: &Strategy{
 				LastContractDateTime: time.Date(2021, 11, 1, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100},
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
 			want1: 2105,
 			want2: nil},
 		{name: "現在時刻が15:00:00で、最終約定日時が15:00:00なら、銘柄の現在値を返す",
@@ -68,7 +94,11 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
 			arg1: &Strategy{
 				LastContractDateTime: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100},
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
 			want1: 2105,
 			want2: nil},
 		{name: "銘柄の現在値を取れなかったらエラー",
@@ -76,9 +106,25 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			kabusAPI: &testKabusAPI{GetSymbol2: ErrUnknown},
 			arg1: &Strategy{
 				LastContractDateTime: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100},
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
 			want1: 0,
 			want2: ErrUnknown},
+		{name: "現在時刻が12:30:00で、最終約定日時が現在の時間範囲でないなら、銘柄の現在値を返す",
+			clock:    &testClock{Now1: time.Date(2021, 11, 2, 12, 30, 0, 0, time.Local)},
+			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
+			arg1: &Strategy{
+				LastContractDateTime: time.Date(2021, 11, 2, 11, 25, 0, 0, time.Local),
+				LastContractPrice:    2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
+			want1: 2105,
+			want2: nil},
 	}
 
 	for _, test := range tests {

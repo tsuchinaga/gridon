@@ -1,9 +1,5 @@
 package gridon
 
-import (
-	"time"
-)
-
 // newGridService - 新しいグリッドサービスの取得
 func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService) IGridService {
 	return &gridService{
@@ -111,17 +107,22 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 }
 
 // getBasePrice - 戦略から基準価格を取り出す
-// 現在時刻が9時～15時で価格が当日のものならその価格を、そうでないならAPIから銘柄の価格を取得する
+// グリッド戦略の実行時刻範囲のうち、現在時刻と同じ範囲内の約定があればその価格を基準価格にし、
+// なければ銘柄情報を取得して現在値を基準価格とする
 func (s *gridService) getBasePrice(strategy *Strategy) (float64, error) {
 	if strategy == nil {
 		return 0, ErrNilArgument
 	}
 
+	if len(strategy.GridStrategy.TimeRanges) == 0 {
+		return 0, ErrNotExistsTimeRange
+	}
+
 	now := s.clock.Now()
-	o := time.Date(now.Year(), now.Month(), now.Day(), 9, 0, 0, 0, time.Local)
-	c := time.Date(now.Year(), now.Month(), now.Day(), 15, 0, 0, 0, time.Local)
-	if !now.Before(o) && now.Before(c) && !strategy.LastContractDateTime.Before(o) && strategy.LastContractDateTime.Before(c) {
-		return strategy.LastContractPrice, nil
+	for _, tr := range strategy.GridStrategy.TimeRanges {
+		if tr.In(now) && tr.In(strategy.LastContractDateTime) {
+			return strategy.LastContractPrice, nil
+		}
 	}
 
 	symbol, err := s.kabusAPI.GetSymbol(strategy.SymbolCode, strategy.Exchange)

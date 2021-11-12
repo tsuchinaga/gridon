@@ -162,6 +162,10 @@ type TimeRange struct {
 
 // In - 引数の時刻が範囲内かどうか
 func (v *TimeRange) In(target time.Time) bool {
+	if target.IsZero() {
+		return false
+	}
+
 	start := time.Date(0, 1, 1, v.Start.Hour(), v.Start.Minute(), v.Start.Second(), v.Start.Nanosecond(), v.Start.Location())
 	end := time.Date(0, 1, 1, v.End.Hour(), v.End.Minute(), v.End.Second(), v.End.Nanosecond(), v.End.Location())
 	t := time.Date(0, 1, 1, target.Hour(), target.Minute(), target.Second(), target.Nanosecond(), target.Location())
