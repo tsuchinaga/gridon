@@ -71,6 +71,7 @@ func NewService() (IService, error) {
 // IService - gridonサービスのインターフェース
 type IService interface {
 	Start() error
+	SaveStrategy(strategy *Strategy) error
 }
 
 // service - gridonサービス
@@ -164,6 +165,7 @@ func (s *service) contractTask() {
 
 			if err := s.contractService.Confirm(strategy); err != nil {
 				s.logger.Warning(fmt.Errorf("%s の約定確認処理でエラーが発生しました: %w", strategy.Code, err))
+				return
 			}
 
 			if err := s.gridService.Leveling(strategy); err != nil {
@@ -245,4 +247,9 @@ func (s *service) orderTask() {
 		}()
 	}
 	wg.Wait()
+}
+
+// SaveStrategy - 戦略の保存
+func (s *service) SaveStrategy(strategy *Strategy) error {
+	return s.strategyStore.Save(strategy)
 }
