@@ -12,6 +12,8 @@ kabusapiを利用したグリッド戦略
 
 そのため、詳しい使い方は明記しません。
 
+[https://github.com/tsuchinaga/kabus-virtual-security](https://github.com/tsuchinaga/kabus-virtual-security) にミラーリングしていますが、オリジナルは [https://gitlab.com/tsuchinaga/gridon](https://gitlab.com/tsuchinaga/gridon) にあります。
+
 ## genji DB
 
 [genjidb/genji: Document-oriented, embedded SQL database](https://github.com/genjidb/genji)
