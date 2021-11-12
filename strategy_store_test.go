@@ -17,6 +17,11 @@ type testStrategyStore struct {
 	SetContractCount       int
 	GetByCode1             *Strategy
 	GetByCode2             error
+	GetStrategies1         []*Strategy
+	GetStrategies2         error
+	GetStrategiesCount     int
+	DeployFromDB1          error
+	DeployFromDBCount      int
 }
 
 func (t *testStrategyStore) GetByCode(string) (*Strategy, error) {
@@ -34,6 +39,14 @@ func (t *testStrategyStore) SetContract(strategyCode string, contractPrice float
 	t.SetContractHistory = append(t.SetContractHistory, contractDateTime)
 	t.SetContractCount++
 	return t.SetContract1
+}
+func (t *testStrategyStore) GetStrategies() ([]*Strategy, error) {
+	t.GetStrategiesCount++
+	return t.GetStrategies1, t.GetStrategies2
+}
+func (t *testStrategyStore) DeployFromDB() error {
+	t.DeployFromDBCount++
+	return t.DeployFromDB1
 }
 
 func Test_strategyStore_AddStrategyCash(t *testing.T) {

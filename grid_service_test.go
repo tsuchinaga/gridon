@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+type testGridService struct {
+	IGridService
+	Leveling1       error
+	LevelingCount   int
+	LevelingHistory []interface{}
+}
+
+func (t *testGridService) Leveling(strategy *Strategy) error {
+	t.LevelingHistory = append(t.LevelingHistory, strategy)
+	t.LevelingCount++
+	return t.Leveling1
+}
+
 func Test_gridService_getBasePrice(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

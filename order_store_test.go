@@ -16,6 +16,8 @@ type testOrderStore struct {
 	Save1                                error
 	SaveCount                            int
 	SaveHistory                          []interface{}
+	DeployFromDB1                        error
+	DeployFromDBCount                    int
 }
 
 func (t *testOrderStore) GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error) {
@@ -27,6 +29,10 @@ func (t *testOrderStore) Save(order *Order) error {
 	t.SaveHistory = append(t.SaveHistory, order)
 	t.SaveCount++
 	return t.Save1
+}
+func (t *testOrderStore) DeployFromDB() error {
+	t.DeployFromDBCount++
+	return t.DeployFromDB1
 }
 
 func Test_orderStore_Save(t *testing.T) {

@@ -28,6 +28,12 @@ type testOrderService struct {
 	ExitMarket1                          error
 	ExitMarketCount                      int
 	ExitMarketHistory                    []interface{}
+	CancelAll1                           error
+	CancelAllCount                       int
+	CancelAllHistory                     []interface{}
+	ExitAll1                             error
+	ExitAllCount                         int
+	ExitAllHistory                       []interface{}
 }
 
 func (t *testOrderService) GetActiveOrdersByStrategyCode(strategyCode string) ([]*Order, error) {
@@ -68,6 +74,16 @@ func (t *testOrderService) ExitMarket(strategyCode string, quantity float64, sor
 	t.ExitMarketHistory = append(t.ExitMarketHistory, sortOrder)
 	t.ExitMarketCount++
 	return t.ExitMarket1
+}
+func (t *testOrderService) CancelAll(strategy *Strategy) error {
+	t.CancelAllHistory = append(t.CancelAllHistory, strategy)
+	t.CancelAllCount++
+	return t.CancelAll1
+}
+func (t *testOrderService) ExitAll(strategy *Strategy) error {
+	t.ExitAllHistory = append(t.ExitAllHistory, strategy)
+	t.ExitAllCount++
+	return t.ExitAll1
 }
 
 func Test_orderService_CancelAll(t *testing.T) {

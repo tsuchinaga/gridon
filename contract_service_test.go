@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+type testContractService struct {
+	IContractService
+	Confirm1       error
+	ConfirmCount   int
+	ConfirmHistory []interface{}
+}
+
+func (t *testContractService) Confirm(strategy *Strategy) error {
+	t.ConfirmHistory = append(t.ConfirmHistory, strategy)
+	t.ConfirmCount++
+	return t.Confirm1
+}
+
 func Test_contractService_releaseHoldPositions(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

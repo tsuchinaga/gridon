@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+type testRebalanceService struct {
+	IRebalanceService
+	Rebalance1       error
+	RebalanceCount   int
+	RebalanceHistory []interface{}
+}
+
+func (t *testRebalanceService) Rebalance(strategy *Strategy) error {
+	t.RebalanceHistory = append(t.RebalanceHistory, strategy)
+	t.RebalanceCount++
+	return t.Rebalance1
+}
+
 func Test_rebalanceService_rebalanceQuantity(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

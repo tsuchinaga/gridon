@@ -25,6 +25,8 @@ type testPositionStore struct {
 	Hold1                                   error
 	HoldCount                               int
 	HoldHistory                             []interface{}
+	DeployFromDB1                           error
+	DeployFromDBCount                       int
 }
 
 func (t *testPositionStore) Save(position *Position) error {
@@ -54,6 +56,10 @@ func (t *testPositionStore) Hold(positionCode string, quantity float64) error {
 	t.HoldHistory = append(t.HoldHistory, quantity)
 	t.HoldCount++
 	return t.Hold1
+}
+func (t *testPositionStore) DeployFromDB() error {
+	t.DeployFromDBCount++
+	return t.DeployFromDB1
 }
 
 func Test_positionStore_Save(t *testing.T) {
