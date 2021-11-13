@@ -97,3 +97,12 @@ const (
 	SortOrderNewest      SortOrder = "newest"
 	SortOrderLatest      SortOrder = "latest"
 )
+
+// TickGroup - 呼値グループ
+type TickGroup string
+
+const (
+	TickGroupUnspecified TickGroup = ""
+	TickGroupTOPIX100    TickGroup = "topix100"
+	TickGroupOther       TickGroup = "other"
+)
