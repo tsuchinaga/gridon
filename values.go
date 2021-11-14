@@ -6,12 +6,13 @@ import (
 
 // Symbol - 銘柄情報
 type Symbol struct {
-	Code         string   // 銘柄コード
-	Exchange     Exchange // 市場
-	TradingUnit  float64  // 売買単位
-	CurrentPrice float64  // 現在値
-	BidPrice     float64  // 最良買い気配値
-	AskPrice     float64  // 最良売り気配値
+	Code         string    // 銘柄コード
+	Exchange     Exchange  // 市場
+	TradingUnit  float64   // 売買単位
+	CurrentPrice float64   // 現在値
+	BidPrice     float64   // 最良買い気配値
+	AskPrice     float64   // 最良売り気配値
+	TickGroup    TickGroup // 呼値グループ
 }
 
 // SecurityOrder - 証券会社の注文

@@ -22,6 +22,9 @@ type testStrategyStore struct {
 	GetStrategiesCount     int
 	DeployFromDB1          error
 	DeployFromDBCount      int
+	SetTickGroup1          error
+	SetTickGroupCount      int
+	SetTickGroupHistory    []interface{}
 }
 
 func (t *testStrategyStore) GetByCode(string) (*Strategy, error) {
@@ -47,6 +50,12 @@ func (t *testStrategyStore) GetStrategies() ([]*Strategy, error) {
 func (t *testStrategyStore) DeployFromDB() error {
 	t.DeployFromDBCount++
 	return t.DeployFromDB1
+}
+func (t *testStrategyStore) SetTickGroup(strategyCode string, tickGroup TickGroup) error {
+	t.SetTickGroupHistory = append(t.SetTickGroupHistory, strategyCode)
+	t.SetTickGroupHistory = append(t.SetTickGroupHistory, tickGroup)
+	t.SetTickGroupCount++
+	return t.SetTickGroup1
 }
 
 func Test_strategyStore_AddStrategyCash(t *testing.T) {
@@ -384,6 +393,68 @@ func Test_strategyStore_Save(t *testing.T) {
 			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantSaveStrategyCount, test.db.SaveStrategyCount) {
 				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
 					test.want1, test.wantStore, test.wantSaveStrategyCount,
+					got1, store.store, test.db.SaveStrategyCount)
+			}
+		})
+	}
+}
+
+func Test_strategyStore_SetTickGroup(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                  string
+		db                    *testDB
+		store                 map[string]*Strategy
+		arg1                  string
+		arg2                  TickGroup
+		want1                 error
+		wantStore             map[string]*Strategy
+		wantStrategySaveCount int
+	}{
+		{name: "該当する戦略がなければ変更なし",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "",
+			arg2:  TickGroupTopix100,
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			wantStrategySaveCount: 0},
+		{name: "該当する戦略があれば更新する",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "strategy-code-002",
+			arg2:  TickGroupTopix100,
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002", TickGroup: TickGroupTopix100},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			wantStrategySaveCount: 1},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &strategyStore{store: test.store, db: test.db}
+			got1 := store.SetTickGroup(test.arg1, test.arg2)
+
+			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantStrategySaveCount, test.db.SaveStrategyCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantStrategySaveCount,
 					got1, store.store, test.db.SaveStrategyCount)
 			}
 		})

@@ -214,6 +214,7 @@ func (k *kabusAPI) GetSymbol(symbolCode string, exchange Exchange) (*Symbol, err
 		CurrentPrice: board.CurrentPrice,
 		BidPrice:     board.BidPrice,
 		AskPrice:     board.AskPrice,
+		TickGroup:    k.priceRangeGroupFrom(symbol.PriceRangeGroup),
 	}, nil
 }
 
@@ -365,4 +366,15 @@ func (k *kabusAPI) SendOrder(strategy *Strategy, order *Order) (OrderResult, err
 	result.ResultCode = int(res.ResultCode)
 	result.OrderCode = res.OrderId
 	return result, nil
+}
+
+func (k *kabusAPI) priceRangeGroupFrom(priceRangeGroup string) TickGroup {
+	switch priceRangeGroup {
+	case "10000":
+		return TickGroupOther
+	case "10003":
+		return TickGroupTopix100
+	default:
+		return TickGroupUnspecified
+	}
 }

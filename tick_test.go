@@ -107,10 +107,10 @@ func Test_tick_TickAddedPrice(t *testing.T) {
 		{name: "-5なら5ティック下", arg1: TickGroupOther, arg2: 3000, arg3: -5, want: 2995},
 		{name: "範囲を越えて5ティック上", arg1: TickGroupOther, arg2: 2998, arg3: 5, want: 3015},
 		{name: "範囲を超えて5ティック下", arg1: TickGroupOther, arg2: 3010, arg3: -5, want: 2997},
-		{name: "TOPIX100テーブルで1ティック上", arg1: TickGroupTOPIX100, arg2: 250.5, arg3: 1, want: 250.6},
-		{name: "TOPIX100テーブルで1ティック下", arg1: TickGroupTOPIX100, arg2: 250.5, arg3: -1, want: 250.4},
-		{name: "TOPIX100テーブルで範囲を超えて5ティック上", arg1: TickGroupTOPIX100, arg2: 999.8, arg3: 5, want: 1001.5},
-		{name: "TOPIX100テーブルで範囲を超えて5ティック下", arg1: TickGroupTOPIX100, arg2: 1001.0, arg3: -5, want: 999.7},
+		{name: "TOPIX100テーブルで1ティック上", arg1: TickGroupTopix100, arg2: 250.5, arg3: 1, want: 250.6},
+		{name: "TOPIX100テーブルで1ティック下", arg1: TickGroupTopix100, arg2: 250.5, arg3: -1, want: 250.4},
+		{name: "TOPIX100テーブルで範囲を超えて5ティック上", arg1: TickGroupTopix100, arg2: 999.8, arg3: 5, want: 1001.5},
+		{name: "TOPIX100テーブルで範囲を超えて5ティック下", arg1: TickGroupTopix100, arg2: 1001.0, arg3: -5, want: 999.7},
 	}
 
 	for _, test := range tests {

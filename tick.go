@@ -19,7 +19,7 @@ type tick struct{}
 // GetTick - 1ティックの幅
 func (t *tick) GetTick(tickGroup TickGroup, price float64) float64 {
 	switch tickGroup {
-	case TickGroupTOPIX100:
+	case TickGroupTopix100:
 		return t.getTopix100Tick(price)
 	default:
 		return t.getOtherTick(price)

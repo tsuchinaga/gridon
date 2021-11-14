@@ -103,6 +103,6 @@ type TickGroup string
 
 const (
 	TickGroupUnspecified TickGroup = ""
-	TickGroupTOPIX100    TickGroup = "topix100"
+	TickGroupTopix100    TickGroup = "topix100"
 	TickGroupOther       TickGroup = "other"
 )
