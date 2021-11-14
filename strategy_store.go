@@ -33,6 +33,7 @@ type IStrategyStore interface {
 	GetStrategies() ([]*Strategy, error)
 	AddStrategyCash(strategyCode string, cashDiff float64) error
 	SetContract(strategyCode string, contractPrice float64, contractDateTime time.Time) error
+	SetTickGroup(strategyCode string, tickGroup TickGroup) error
 	Save(strategy *Strategy) error
 }
 
@@ -113,6 +114,20 @@ func (s *strategyStore) SetContract(strategyCode string, contractPrice float64, 
 	if _, ok := s.store[strategyCode]; ok {
 		s.store[strategyCode].LastContractPrice = contractPrice
 		s.store[strategyCode].LastContractDateTime = contractDateTime
+
+		go s.db.SaveStrategy(s.store[strategyCode])
+	}
+
+	return nil
+}
+
+// SetTickGroup - 呼値グループを設定する
+func (s *strategyStore) SetTickGroup(strategyCode string, tickGroup TickGroup) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	if _, ok := s.store[strategyCode]; ok {
+		s.store[strategyCode].TickGroup = tickGroup
 
 		go s.db.SaveStrategy(s.store[strategyCode])
 	}

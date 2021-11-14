@@ -13,6 +13,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	orderPassword := "Password1234"
+
 	strategies := make([]*gridon.Strategy, 0)
 	strategies = append(strategies, &gridon.Strategy{
 		Code:            "1475-buy",
@@ -39,7 +41,7 @@ func main() {
 		CancelStrategy: gridon.CancelStrategy{
 			Runnable: true,
 			Timings: []time.Time{
-				time.Date(0, 1, 1, 11, 30, 0, 0, time.Local),
+				time.Date(0, 1, 1, 12, 20, 0, 0, time.Local),
 				time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
 		},
 		ExitStrategy: gridon.ExitStrategy{
@@ -47,7 +49,7 @@ func main() {
 			Timings:  []time.Time{time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
 		},
 		Account: gridon.Account{
-			Password:    "Password1234",
+			Password:    orderPassword,
 			AccountType: gridon.AccountTypeSpecific,
 		},
 	})
@@ -77,7 +79,7 @@ func main() {
 		CancelStrategy: gridon.CancelStrategy{
 			Runnable: true,
 			Timings: []time.Time{
-				time.Date(0, 1, 1, 11, 30, 0, 0, time.Local),
+				time.Date(0, 1, 1, 12, 20, 0, 0, time.Local),
 				time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
 		},
 		ExitStrategy: gridon.ExitStrategy{
@@ -85,7 +87,7 @@ func main() {
 			Timings:  []time.Time{time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
 		},
 		Account: gridon.Account{
-			Password:    "Password1234",
+			Password:    orderPassword,
 			AccountType: gridon.AccountTypeSpecific,
 		},
 	})

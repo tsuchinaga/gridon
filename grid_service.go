@@ -48,8 +48,8 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 	}
 
 	// 基準価格から最大グリッド数より外にある注文を特定して取り消す
-	upper := s.tick.TickAddedPrice(basePrice, strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
-	lower := s.tick.TickAddedPrice(basePrice, -1*strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
+	upper := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
+	lower := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
 	gridQuantities := make(map[float64]float64)
 	for _, o := range orders {
 		// 指値注文以外はスキップ
@@ -70,7 +70,7 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 	for i := 1; i <= strategy.GridStrategy.NumberOfGrids; i++ {
 		// upper
 		{
-			upper := s.tick.TickAddedPrice(basePrice, i*strategy.GridStrategy.Width)
+			upper := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, i*strategy.GridStrategy.Width)
 			quantity := strategy.GridStrategy.Quantity - gridQuantities[upper]
 			// 部分約定対策として、基準価格の隣の場合に限り基準価格に乗っている数量を減算する
 			if i == 1 {
@@ -87,7 +87,7 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 
 		// lower
 		{
-			lower := s.tick.TickAddedPrice(basePrice, -1*i*strategy.GridStrategy.Width)
+			lower := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*i*strategy.GridStrategy.Width)
 			quantity := strategy.GridStrategy.Quantity - gridQuantities[lower]
 			// 部分約定対策として、基準価格の隣の場合に限り基準価格に乗っている数量を減算する
 			if i == 1 {

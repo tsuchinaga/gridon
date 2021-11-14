@@ -372,3 +372,59 @@ func Test_service_Start(t *testing.T) {
 		})
 	}
 }
+
+func Test_service_updateStrategyTask(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                               string
+		strategyStore                      *testStrategyStore
+		strategyService                    *testStrategyService
+		logger                             *testLogger
+		wantWarningCount                   int
+		wantUpdateStrategyTickGroupHistory []interface{}
+	}{
+		{name: "戦略一覧の取得に失敗したらエラーログを吐いて終了",
+			strategyStore:    &testStrategyStore{GetStrategies2: ErrUnknown},
+			strategyService:  &testStrategyService{},
+			logger:           &testLogger{},
+			wantWarningCount: 1},
+		{name: "戦略一覧が空なら何もせずに終了",
+			strategyStore:    &testStrategyStore{GetStrategies1: []*Strategy{}},
+			strategyService:  &testStrategyService{},
+			logger:           &testLogger{},
+			wantWarningCount: 0},
+		{name: "戦略の更新に失敗したらエラーログを吐き、後続の処理を実行",
+			strategyStore: &testStrategyStore{GetStrategies1: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-002"},
+				{Code: "strategy-code-003"}}},
+			strategyService:                    &testStrategyService{UpdateStrategyTickGroup1: ErrUnknown},
+			logger:                             &testLogger{},
+			wantWarningCount:                   3,
+			wantUpdateStrategyTickGroupHistory: []interface{}{"strategy-code-001", "strategy-code-002", "strategy-code-003"}},
+		{name: "戦略の更新に成功したら終了",
+			strategyStore: &testStrategyStore{GetStrategies1: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-002"},
+				{Code: "strategy-code-003"}}},
+			strategyService:                    &testStrategyService{UpdateStrategyTickGroup1: nil},
+			logger:                             &testLogger{},
+			wantWarningCount:                   0,
+			wantUpdateStrategyTickGroupHistory: []interface{}{"strategy-code-001", "strategy-code-002", "strategy-code-003"}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &service{logger: test.logger, strategyStore: test.strategyStore, strategyService: test.strategyService}
+			service.updateStrategyTask()
+			if !reflect.DeepEqual(test.wantWarningCount, test.logger.WarningCount) ||
+				!reflect.DeepEqual(test.wantUpdateStrategyTickGroupHistory, test.strategyService.UpdateStrategyTickGroupHistory) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(),
+					test.wantWarningCount, test.wantUpdateStrategyTickGroupHistory,
+					test.logger.WarningCount, test.strategyService.UpdateStrategyTickGroupHistory)
+			}
+		})
+	}
+}

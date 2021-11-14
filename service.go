@@ -65,6 +65,9 @@ func NewService() (IService, error) {
 			getStrategyStore(db),
 			getOrderStore(db),
 			getPositionStore(db)),
+		strategyService: newStrategyService(
+			newKabusAPI(kabucom),
+			getStrategyStore(db)),
 	}, nil
 }
 
@@ -85,6 +88,7 @@ type service struct {
 	rebalanceService   IRebalanceService
 	gridService        IGridService
 	orderService       IOrderService
+	strategyService    IStrategyService
 	contractRunning    bool
 	contractRunningMtx sync.Mutex
 	orderRunning       bool
@@ -103,12 +107,28 @@ func (s *service) Start() error {
 		return err
 	}
 
+	go s.updateStrategyTask()
+
 	// 約定確認スケジューラの起動
 	go s.contractScheduler()
 
 	// 注文に関するスケジューラの起動 (リバランス、グリッド、全エグジット)
 	go s.orderScheduler()
 	select {}
+}
+
+func (s *service) updateStrategyTask() {
+	strategies, err := s.strategyStore.GetStrategies()
+	if err != nil {
+		s.logger.Warning(fmt.Errorf("戦略必須情報更新処理の戦略一覧取得でエラーが発生しました: %w", err))
+		return
+	}
+
+	for _, strategy := range strategies {
+		if err := s.strategyService.UpdateStrategyTickGroup(strategy.Code); err != nil {
+			s.logger.Warning(fmt.Errorf("戦略必須情報更新処理の更新処理でエラーが発生しました(code = %s): %w", strategy.Code, err))
+		}
+	}
 }
 
 // contractScheduler - 約定確認スケジューラ

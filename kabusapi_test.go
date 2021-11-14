@@ -1396,3 +1396,28 @@ func Test_newKabusAPI(t *testing.T) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
 }
+
+func Test_kabusAPI_priceRangeGroupFrom(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		arg1  string
+		want1 TickGroup
+	}{
+		{name: "未指定 を変換できる", arg1: "", want1: TickGroupUnspecified},
+		{name: "その他テーブル を変換できる", arg1: "10000", want1: TickGroupOther},
+		{name: "TOPIX100テーブル を変換できる", arg1: "10003", want1: TickGroupTopix100},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabusAPI := &kabusAPI{}
+			got1 := kabusAPI.priceRangeGroupFrom(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
