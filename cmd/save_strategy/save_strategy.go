@@ -45,8 +45,9 @@ func main() {
 				time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
 		},
 		ExitStrategy: gridon.ExitStrategy{
-			Runnable: true,
-			Timings:  []time.Time{time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
+			Runnable:      true,
+			ExecutionType: gridon.ExecutionTypeMarketAfternoonClose,
+			Timings:       []time.Time{time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
 		},
 		Account: gridon.Account{
 			Password:    orderPassword,
@@ -83,8 +84,9 @@ func main() {
 				time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)},
 		},
 		ExitStrategy: gridon.ExitStrategy{
-			Runnable: true,
-			Timings:  []time.Time{time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
+			Runnable:      true,
+			ExecutionType: gridon.ExecutionTypeMarketAfternoonClose,
+			Timings:       []time.Time{time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
 		},
 		Account: gridon.Account{
 			Password:    orderPassword,
