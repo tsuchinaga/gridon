@@ -232,7 +232,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -248,7 +248,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -294,7 +294,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -310,7 +310,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -382,7 +382,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -398,7 +398,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -470,7 +470,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarketAfternoonClose, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -486,7 +486,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarketAfternoonClose, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -499,7 +499,7 @@ func Test_ExitAll(t *testing.T) {
 					MarginTradeType:  MarginTradeTypeDay,
 					TradeType:        TradeTypeExit,
 					Side:             SideSell,
-					ExecutionType:    ExecutionTypeMarket,
+					ExecutionType:    ExecutionTypeMarketAfternoonClose,
 					OrderQuantity:    350,
 					ContractQuantity: 0,
 					AccountType:      AccountTypeSpecific,

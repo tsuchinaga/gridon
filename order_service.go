@@ -183,7 +183,7 @@ func (s *orderService) ExitAll(strategy *Strategy) error {
 		MarginTradeType: strategy.MarginTradeType,
 		TradeType:       TradeTypeExit,
 		Side:            strategy.EntrySide.Turn(),
-		ExecutionType:   ExecutionTypeMarket,
+		ExecutionType:   strategy.ExitStrategy.ExecutionType,
 		Price:           0,
 		OrderQuantity:   0,
 		AccountType:     strategy.Account.AccountType,

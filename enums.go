@@ -84,9 +84,10 @@ const (
 type ExecutionType string
 
 const (
-	ExecutionTypeUnspecified ExecutionType = ""       // 未指定
-	ExecutionTypeMarket      ExecutionType = "market" // 成行
-	ExecutionTypeLimit       ExecutionType = "limit"  // 指値
+	ExecutionTypeUnspecified          ExecutionType = ""                       // 未指定
+	ExecutionTypeMarket               ExecutionType = "market"                 // 成行
+	ExecutionTypeMarketAfternoonClose ExecutionType = "market_afternoon_close" // 後場引成
+	ExecutionTypeLimit                ExecutionType = "limit"                  // 指値
 )
 
 // SortOrder - 並び順

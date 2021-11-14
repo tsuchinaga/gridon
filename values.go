@@ -117,8 +117,9 @@ func (v *RebalanceStrategy) IsRunnable(now time.Time) bool {
 
 // ExitStrategy - 全エグジット戦略
 type ExitStrategy struct {
-	Runnable bool        // 実行可能かどうか
-	Timings  []time.Time // タイミング(時分)の一覧
+	Runnable      bool          // 実行可能かどうか
+	ExecutionType ExecutionType // 執行条件
+	Timings       []time.Time   // タイミング(時分)の一覧
 }
 
 // IsRunnable - 全エグジット戦略が実行可能かどうか
