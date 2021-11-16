@@ -26,6 +26,8 @@ type testDB struct {
 	GetActiveOrders2    error
 	GetActivePositions1 []*Position
 	GetActivePositions2 error
+	CleanupOrders1      error
+	CleanupPositions1   error
 }
 
 func (t *testDB) GetStrategies() ([]*Strategy, error) {
@@ -52,6 +54,8 @@ func (t *testDB) SavePosition(position *Position) error {
 	t.SavePositionCount++
 	return t.SavePosition1
 }
+func (t *testDB) CleanupOrders() error    { return t.CleanupOrders1 }
+func (t *testDB) CleanupPositions() error { return t.CleanupPositions1 }
 
 func Test_db_SaveStrategy(t *testing.T) {
 	t.Parallel()
@@ -431,5 +435,152 @@ func Test_getDB(t *testing.T) {
 
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}
+
+func Test_db_CleanupOrders(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		logger     *testLogger
+		dataset    []*Order
+		want       error
+		wantOrders []*Order
+	}{
+		{name: "データがなければ何もしない",
+			logger:     &testLogger{},
+			dataset:    []*Order{},
+			want:       nil,
+			wantOrders: []*Order{}},
+		{name: "削除対象のデータがなければ何もしない",
+			logger: &testLogger{},
+			dataset: []*Order{
+				{Code: "order-code-001", Status: OrderStatusInOrder},
+				{Code: "order-code-002", Status: OrderStatusInOrder},
+				{Code: "order-code-003", Status: OrderStatusInOrder},
+			},
+			want: nil,
+			wantOrders: []*Order{
+				{Code: "order-code-001", Status: OrderStatusInOrder},
+				{Code: "order-code-002", Status: OrderStatusInOrder},
+				{Code: "order-code-003", Status: OrderStatusInOrder},
+			}},
+		{name: "削除対象のデータがあれば削除する",
+			logger: &testLogger{},
+			dataset: []*Order{
+				{Code: "order-code-001", Status: OrderStatusDone},
+				{Code: "order-code-002", Status: OrderStatusInOrder},
+				{Code: "order-code-003", Status: OrderStatusCanceled},
+				{Code: "order-code-004", Status: OrderStatusUnspecified},
+				{Code: "order-code-005", Status: OrderStatusInOrder},
+			},
+			want: nil,
+			wantOrders: []*Order{
+				{Code: "order-code-002", Status: OrderStatusInOrder},
+				{Code: "order-code-005", Status: OrderStatusInOrder},
+			}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			d, _ := openDB(":memory:")
+			defer d.Close()
+			for _, data := range test.dataset {
+				if err := d.Exec(`insert into orders values ?`, data); err != nil {
+					t.Errorf("%s insert error\n%+v\n", t.Name(), err)
+				}
+			}
+
+			db := &db{db: d, logger: test.logger}
+			got := db.CleanupOrders()
+
+			orders := make([]*Order, 0)
+			res, _ := d.Query("select * from orders order by code")
+			defer res.Close()
+			_ = res.Iterate(func(d types.Document) error {
+				var order Order
+				_ = document.StructScan(d, &order)
+				orders = append(orders, &order)
+				return nil
+			})
+
+			if !reflect.DeepEqual(test.wantOrders, orders) || !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantOrders, got, orders)
+			}
+		})
+	}
+}
+
+func Test_db_CleanupPositions(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		logger        *testLogger
+		dataset       []*Position
+		want          error
+		wantPositions []*Position
+	}{
+		{name: "データがなければ何もしない",
+			logger:        &testLogger{},
+			dataset:       []*Position{},
+			want:          nil,
+			wantPositions: []*Position{}},
+		{name: "削除対象のデータがなければ何もしない",
+			logger: &testLogger{},
+			dataset: []*Position{
+				{Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 100},
+				{Code: "position-code-002", OwnedQuantity: 100, HoldQuantity: 0},
+				{Code: "position-code-003", OwnedQuantity: 100, HoldQuantity: 50},
+			},
+			want: nil,
+			wantPositions: []*Position{
+				{Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 100},
+				{Code: "position-code-002", OwnedQuantity: 100, HoldQuantity: 0},
+				{Code: "position-code-003", OwnedQuantity: 100, HoldQuantity: 50},
+			}},
+		{name: "削除対象のデータがあれば削除する",
+			logger: &testLogger{},
+			dataset: []*Position{
+				{Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 100},
+				{Code: "position-code-002", OwnedQuantity: 0, HoldQuantity: 0},
+				{Code: "position-code-003", OwnedQuantity: 0, HoldQuantity: 0},
+			},
+			want: nil,
+			wantPositions: []*Position{
+				{Code: "position-code-001", OwnedQuantity: 100, HoldQuantity: 100},
+			}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			d, _ := openDB(":memory:")
+			defer d.Close()
+			for _, data := range test.dataset {
+				if err := d.Exec(`insert into positions values ?`, data); err != nil {
+					t.Errorf("%s insert error\n%+v\n", t.Name(), err)
+				}
+			}
+
+			db := &db{db: d, logger: test.logger}
+			got := db.CleanupPositions()
+
+			positions := make([]*Position, 0)
+			res, _ := d.Query("select * from positions order by code")
+			defer res.Close()
+			_ = res.Iterate(func(d types.Document) error {
+				var position Position
+				_ = document.StructScan(d, &position)
+				positions = append(positions, &position)
+				return nil
+			})
+
+			if !reflect.DeepEqual(test.wantPositions, positions) || !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantPositions, got, positions)
+			}
+		})
 	}
 }
