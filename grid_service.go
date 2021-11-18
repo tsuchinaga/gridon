@@ -47,9 +47,14 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 		return err
 	}
 
+	// 乗せるべきgridのリストを作っておく
+	grids := []float64{basePrice} // 基準価格も有効なグリッドなので追加しておく
+	for i := 1; i <= strategy.GridStrategy.NumberOfGrids; i++ {
+		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, i*strategy.GridStrategy.Width))
+		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*i*strategy.GridStrategy.Width))
+	}
+
 	// 基準価格から最大グリッド数より外にある注文を特定して取り消す
-	upper := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
-	lower := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
 	gridQuantities := make(map[float64]float64)
 	for _, o := range orders {
 		// 指値注文以外はスキップ
@@ -57,7 +62,15 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 			continue
 		}
 
-		if lower <= o.Price && o.Price <= upper {
+		var contain bool
+		for _, g := range grids {
+			if g == o.Price {
+				contain = true
+				break
+			}
+		}
+
+		if contain {
 			gridQuantities[o.Price] += o.OrderQuantity - o.ContractQuantity
 		} else {
 			if err := s.orderService.Cancel(strategy, o.Code); err != nil {
