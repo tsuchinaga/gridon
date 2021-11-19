@@ -1,12 +1,13 @@
 package gridon
 
 // newGridService - 新しいグリッドサービスの取得
-func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService) IGridService {
+func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService, strategyStore IStrategyStore) IGridService {
 	return &gridService{
-		clock:        clock,
-		tick:         tick,
-		kabusAPI:     kabusAPI,
-		orderService: orderService,
+		clock:         clock,
+		tick:          tick,
+		kabusAPI:      kabusAPI,
+		orderService:  orderService,
+		strategyStore: strategyStore,
 	}
 }
 
@@ -17,10 +18,11 @@ type IGridService interface {
 
 // gridService - グリッドサービス
 type gridService struct {
-	clock        IClock
-	tick         ITick
-	kabusAPI     IKabusAPI
-	orderService IOrderService
+	clock         IClock
+	tick          ITick
+	kabusAPI      IKabusAPI
+	orderService  IOrderService
+	strategyStore IStrategyStore
 }
 
 // Leveling - グリッドの整地
@@ -133,8 +135,8 @@ func (s *gridService) getBasePrice(strategy *Strategy) (float64, error) {
 
 	now := s.clock.Now()
 	for _, tr := range strategy.GridStrategy.TimeRanges {
-		if tr.In(now) && tr.In(strategy.LastContractDateTime) {
-			return strategy.LastContractPrice, nil
+		if tr.In(now) && tr.In(strategy.BasePriceDateTime) {
+			return strategy.BasePrice, nil
 		}
 	}
 
@@ -142,7 +144,18 @@ func (s *gridService) getBasePrice(strategy *Strategy) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return symbol.CurrentPrice, nil
+
+	// 価格が有効なものかをチェックし、有効なら戦略に保持して基準価格にする
+	for _, tr := range strategy.GridStrategy.TimeRanges {
+		if tr.In(now) && tr.In(symbol.CurrentPriceDateTime) {
+			if err := s.strategyStore.SetBasePrice(strategy.Code, symbol.CurrentPrice, symbol.CurrentPriceDateTime); err != nil {
+				return 0, err
+			}
+			return symbol.CurrentPrice, nil
+		}
+	}
+
+	return 0, ErrCannotGetBasePrice
 }
 
 // sendGridOrder - グリッド注文を作成し、送信する

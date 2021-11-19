@@ -58,7 +58,8 @@ func NewService() (IService, error) {
 				newKabusAPI(kabucom),
 				getStrategyStore(db),
 				getOrderStore(db),
-				getPositionStore(db))),
+				getPositionStore(db)),
+			getStrategyStore(db)),
 		orderService: newOrderService(
 			newClock(),
 			newKabusAPI(kabucom),

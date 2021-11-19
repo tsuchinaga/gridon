@@ -23,31 +23,35 @@ func (t *testGridService) Leveling(strategy *Strategy) error {
 func Test_gridService_getBasePrice(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		clock    *testClock
-		kabusAPI *testKabusAPI
-		arg1     *Strategy
-		want1    float64
-		want2    error
+		name          string
+		clock         *testClock
+		kabusAPI      *testKabusAPI
+		strategyStore *testStrategyStore
+		arg1          *Strategy
+		want1         float64
+		want2         error
 	}{
 		{name: "引数がnilならエラー",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
-			kabusAPI: &testKabusAPI{},
-			arg1:     nil,
-			want1:    0,
-			want2:    ErrNilArgument},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			arg1:          nil,
+			want1:         0,
+			want2:         ErrNilArgument},
 		{name: "グリッド戦略の実行時刻が指定されていなければデータ取得は無駄なのでエラー",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
-			kabusAPI: &testKabusAPI{},
-			arg1:     &Strategy{},
-			want1:    0,
-			want2:    ErrNotExistsTimeRange},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			arg1:          &Strategy{},
+			want1:         0,
+			want2:         ErrNotExistsTimeRange},
 		{name: "現在時刻が09:00:00で、最終約定日時が09:00:00なら、最終約定価格を返す",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
-			kabusAPI: &testKabusAPI{},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
 			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local),
-				LastContractPrice:    2100,
+				BasePriceDateTime: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local),
+				BasePrice:         2100,
 				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
 					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
 					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
@@ -55,11 +59,12 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			want1: 2100,
 			want2: nil},
 		{name: "現在時刻が09:00:01で、最終約定日時が09:00:00なら、最終約定価格を返す",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 1, 0, time.Local)},
-			kabusAPI: &testKabusAPI{},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 1, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
 			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local),
-				LastContractPrice:    2100,
+				BasePriceDateTime: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local),
+				BasePrice:         2100,
 				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
 					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
 					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
@@ -67,47 +72,25 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			want1: 2100,
 			want2: nil},
 		{name: "現在時刻が14:59:59で、最終約定日時が14:59:59なら、最終約定価格を返す",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 14, 59, 59, 0, time.Local)},
-			kabusAPI: &testKabusAPI{},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 14, 59, 59, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
 			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 2, 14, 59, 59, 0, time.Local),
-				LastContractPrice:    2100,
+				BasePriceDateTime: time.Date(2021, 11, 2, 14, 59, 59, 0, time.Local),
+				BasePrice:         2100,
 				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
 					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
 					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
 				}}},
 			want1: 2100,
 			want2: nil},
-		{name: "現在時刻が08:59:59で、最終約定日時が15:00:00なら、銘柄の現在値を返す",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 8, 59, 59, 0, time.Local)},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
-			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100,
-				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
-					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
-					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
-				}}},
-			want1: 2105,
-			want2: nil},
 		{name: "現在時刻が09:00:00で、最終約定日時が前日なら、銘柄の現在値を返す",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105, CurrentPriceDateTime: time.Date(2021, 11, 2, 9, 0, 0, 0, time.Local)}},
+			strategyStore: &testStrategyStore{},
 			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 1, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100,
-				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
-					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
-					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
-				}}},
-			want1: 2105,
-			want2: nil},
-		{name: "現在時刻が15:00:00で、最終約定日時が15:00:00なら、銘柄の現在値を返す",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local)},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
-			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100,
+				BasePriceDateTime: time.Date(2021, 11, 1, 15, 0, 0, 0, time.Local),
+				BasePrice:         2100,
 				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
 					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
 					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
@@ -115,11 +98,12 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			want1: 2105,
 			want2: nil},
 		{name: "銘柄の現在値を取れなかったらエラー",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local)},
-			kabusAPI: &testKabusAPI{GetSymbol2: ErrUnknown},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{GetSymbol2: ErrUnknown},
+			strategyStore: &testStrategyStore{},
 			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local),
-				LastContractPrice:    2100,
+				BasePriceDateTime: time.Date(2021, 11, 2, 15, 0, 0, 0, time.Local),
+				BasePrice:         2100,
 				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
 					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
 					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
@@ -127,24 +111,51 @@ func Test_gridService_getBasePrice(t *testing.T) {
 			want1: 0,
 			want2: ErrUnknown},
 		{name: "現在時刻が12:30:00で、最終約定日時が現在の時間範囲でないなら、銘柄の現在値を返す",
-			clock:    &testClock{Now1: time.Date(2021, 11, 2, 12, 30, 0, 0, time.Local)},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105}},
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 12, 30, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105, CurrentPriceDateTime: time.Date(2021, 11, 2, 12, 30, 0, 0, time.Local)}},
+			strategyStore: &testStrategyStore{},
 			arg1: &Strategy{
-				LastContractDateTime: time.Date(2021, 11, 2, 11, 25, 0, 0, time.Local),
-				LastContractPrice:    2100,
+				BasePriceDateTime: time.Date(2021, 11, 2, 11, 25, 0, 0, time.Local),
+				BasePrice:         2100,
 				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
 					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
 					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
 				}}},
 			want1: 2105,
 			want2: nil},
+		{name: "現在時刻が12:30:00で、最終約定日時が現在の時間範囲でなく、現在値の時刻も時間ないなら、エラーを返す",
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 12, 30, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105, CurrentPriceDateTime: time.Date(2021, 11, 2, 11, 30, 0, 0, time.Local)}},
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				BasePriceDateTime: time.Date(2021, 11, 2, 11, 25, 0, 0, time.Local),
+				BasePrice:         2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
+			want1: 0,
+			want2: ErrCannotGetBasePrice},
+		{name: "現在時刻が12:30:00で、最終約定日時が現在の時間範囲でなく、現在値の時刻が時間内でも、戦略に保存しようとして失敗したらエラー",
+			clock:         &testClock{Now1: time.Date(2021, 11, 2, 12, 30, 0, 0, time.Local)},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{CurrentPrice: 2105, CurrentPriceDateTime: time.Date(2021, 11, 2, 12, 30, 0, 0, time.Local)}},
+			strategyStore: &testStrategyStore{SetBasePrice1: ErrUnknown},
+			arg1: &Strategy{
+				BasePriceDateTime: time.Date(2021, 11, 2, 11, 25, 0, 0, time.Local),
+				BasePrice:         2100,
+				GridStrategy: GridStrategy{TimeRanges: []TimeRange{
+					{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+					{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)},
+				}}},
+			want1: 0,
+			want2: ErrUnknown},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			service := &gridService{clock: test.clock, kabusAPI: test.kabusAPI}
+			service := &gridService{clock: test.clock, kabusAPI: test.kabusAPI, strategyStore: test.strategyStore}
 			got1, got2 := service.getBasePrice(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
@@ -269,6 +280,7 @@ func Test_gridService_Leveling(t *testing.T) {
 		clock                 *testClock
 		orderService          *testOrderService
 		kabusAPI              *testKabusAPI
+		strategyStore         *testStrategyStore
 		tick                  ITick
 		arg1                  *Strategy
 		want1                 error
@@ -277,24 +289,27 @@ func Test_gridService_Leveling(t *testing.T) {
 		wantExitLimitHistory  []interface{}
 	}{
 		{name: "引数がnilならエラー",
-			clock:        &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
-			orderService: &testOrderService{},
-			kabusAPI:     &testKabusAPI{},
-			tick:         &tick{},
-			arg1:         nil,
-			want1:        ErrNilArgument},
+			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			orderService:  &testOrderService{},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
+			arg1:          nil,
+			want1:         ErrNilArgument},
 		{name: "戦略が実行不可なら何もせず終了",
-			clock:        &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
-			orderService: &testOrderService{},
-			kabusAPI:     &testKabusAPI{},
-			tick:         &tick{},
-			arg1:         &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}},
-			want1:        nil},
+			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			orderService:  &testOrderService{},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
+			arg1:          &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}},
+			want1:         nil},
 		{name: "注文一覧の取得に失敗したらエラー",
-			clock:        &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
-			orderService: &testOrderService{GetActiveOrdersByStrategyCode2: ErrUnknown},
-			kabusAPI:     &testKabusAPI{},
-			tick:         &tick{},
+			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			orderService:  &testOrderService{GetActiveOrdersByStrategyCode2: ErrUnknown},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable: true,
 				TimeRanges: []TimeRange{{
@@ -302,10 +317,11 @@ func Test_gridService_Leveling(t *testing.T) {
 					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1: ErrUnknown},
 		{name: "基準価格取得に失敗したらエラー",
-			clock:        &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
-			orderService: &testOrderService{GetActiveOrdersByStrategyCode1: []*Order{}},
-			kabusAPI:     &testKabusAPI{GetSymbol2: ErrUnknown},
-			tick:         &tick{},
+			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			orderService:  &testOrderService{GetActiveOrdersByStrategyCode1: []*Order{}},
+			kabusAPI:      &testKabusAPI{GetSymbol2: ErrUnknown},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable: true,
 				TimeRanges: []TimeRange{{
@@ -319,8 +335,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					{Code: "order-code-001", Price: 2112, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 					{Code: "order-code-002", Price: 2088, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit}},
 				Cancel1: ErrUnknown},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
 				Width:         2,
@@ -352,8 +369,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					{Code: "order-code-004", Price: 2098, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 					{Code: "order-code-005", Price: 2112, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 					{Code: "order-code-006", Price: 2088, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit}}},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
 				Width:         2,
@@ -397,8 +415,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					{Code: "order-code-001", Price: 2102, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 					{Code: "order-code-002", Price: 2098, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 					{Code: "order-code-003", OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeMarket}}},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
 				Width:         2,
@@ -414,8 +433,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{}},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
 				Width:         2,
@@ -441,8 +461,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					{Code: "order-code-008", Price: 2092, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 					{Code: "order-code-009", Price: 2110, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 					{Code: "order-code-010", Price: 2090, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit}}},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
 				Width:         2,
@@ -457,8 +478,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{}},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
 				Width:         2,
@@ -473,8 +495,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{}},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{
 				Code:      "strategy-code-001",
 				EntrySide: SideBuy,
@@ -501,8 +524,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{},
 				EntryLimit1:                    ErrUnknown},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{
 				Code:      "strategy-code-001",
 				EntrySide: SideBuy,
@@ -523,8 +547,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{},
 				ExitLimit1:                     ErrUnknown},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{
 				Code:      "strategy-code-001",
 				EntrySide: SideBuy,
@@ -549,8 +574,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					{Code: "order-code-004", Price: 2096, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 				},
 				ExitLimit1: ErrUnknown},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{
 				Code:      "strategy-code-001",
 				EntrySide: SideBuy,
@@ -576,8 +602,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					{Code: "order-code-005", Price: 2096, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
 				},
 				ExitLimit1: ErrUnknown},
-			kabusAPI: &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, BidPrice: 2101, AskPrice: 2099}},
-			tick:     &tick{},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
 			arg1: &Strategy{
 				Code:      "strategy-code-001",
 				EntrySide: SideBuy,
@@ -599,10 +626,11 @@ func Test_gridService_Leveling(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			service := &gridService{
-				clock:        test.clock,
-				tick:         test.tick,
-				kabusAPI:     test.kabusAPI,
-				orderService: test.orderService,
+				clock:         test.clock,
+				tick:          test.tick,
+				kabusAPI:      test.kabusAPI,
+				strategyStore: test.strategyStore,
+				orderService:  test.orderService,
 			}
 			got1 := service.Leveling(test.arg1)
 			if !errors.Is(got1, test.want1) ||
@@ -627,13 +655,15 @@ func Test_newGridService(t *testing.T) {
 	tick := &tick{}
 	kabusAPI := &testKabusAPI{}
 	orderService := &testOrderService{}
+	strategyStore := &testStrategyStore{}
 	want1 := &gridService{
-		clock:        clock,
-		tick:         tick,
-		kabusAPI:     kabusAPI,
-		orderService: orderService,
+		clock:         clock,
+		tick:          tick,
+		kabusAPI:      kabusAPI,
+		orderService:  orderService,
+		strategyStore: strategyStore,
 	}
-	got1 := newGridService(clock, tick, kabusAPI, orderService)
+	got1 := newGridService(clock, tick, kabusAPI, orderService, strategyStore)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
