@@ -7,21 +7,21 @@ import (
 
 // Strategy - 戦略
 type Strategy struct {
-	Code                 string            // 戦略コード
-	SymbolCode           string            // 銘柄コード
-	Exchange             Exchange          // 市場
-	Product              Product           // 商品種別
-	MarginTradeType      MarginTradeType   // 信用取引区分
-	EntrySide            Side              // エントリー方向
-	Cash                 float64           // 運用中現金
-	LastContractPrice    float64           // 最終約定価格
-	LastContractDateTime time.Time         // 最終約定日時
-	TickGroup            TickGroup         // 呼値グループ
-	RebalanceStrategy    RebalanceStrategy // リバランス戦略
-	GridStrategy         GridStrategy      // グリッド戦略
-	CancelStrategy       CancelStrategy    // 全取消戦略
-	ExitStrategy         ExitStrategy      // 全エグジット戦略
-	Account              Account           // 口座情報
+	Code              string            // 戦略コード
+	SymbolCode        string            // 銘柄コード
+	Exchange          Exchange          // 市場
+	Product           Product           // 商品種別
+	MarginTradeType   MarginTradeType   // 信用取引区分
+	EntrySide         Side              // エントリー方向
+	Cash              float64           // 運用中現金
+	BasePrice         float64           // 基準価格
+	BasePriceDateTime time.Time         // 基準価格取得日時
+	TickGroup         TickGroup         // 呼値グループ
+	RebalanceStrategy RebalanceStrategy // リバランス戦略
+	GridStrategy      GridStrategy      // グリッド戦略
+	CancelStrategy    CancelStrategy    // 全取消戦略
+	ExitStrategy      ExitStrategy      // 全エグジット戦略
+	Account           Account           // 口座情報
 }
 
 func (e *Strategy) String() string {

@@ -32,7 +32,7 @@ type IStrategyStore interface {
 	GetByCode(code string) (*Strategy, error)
 	GetStrategies() ([]*Strategy, error)
 	AddStrategyCash(strategyCode string, cashDiff float64) error
-	SetContract(strategyCode string, contractPrice float64, contractDateTime time.Time) error
+	SetBasePrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
 	SetTickGroup(strategyCode string, tickGroup TickGroup) error
 	Save(strategy *Strategy) error
 }
@@ -106,14 +106,14 @@ func (s *strategyStore) AddStrategyCash(strategyCode string, cashDiff float64) e
 	return nil
 }
 
-// SetContract - 最終約定情報をセットする
-func (s *strategyStore) SetContract(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
+// SetBasePrice - 最終約定情報をセットする
+func (s *strategyStore) SetBasePrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
 	if _, ok := s.store[strategyCode]; ok {
-		s.store[strategyCode].LastContractPrice = contractPrice
-		s.store[strategyCode].LastContractDateTime = contractDateTime
+		s.store[strategyCode].BasePrice = contractPrice
+		s.store[strategyCode].BasePriceDateTime = contractDateTime
 
 		go s.db.SaveStrategy(s.store[strategyCode])
 	}

@@ -12,9 +12,9 @@ type testStrategyStore struct {
 	AddStrategyCash1       error
 	AddStrategyCashHistory []interface{}
 	AddStrategyCashCount   int
-	SetContract1           error
-	SetContractHistory     []interface{}
-	SetContractCount       int
+	SetBasePrice1          error
+	SetBasePriceHistory    []interface{}
+	SetBasePriceCount      int
 	GetByCode1             *Strategy
 	GetByCode2             error
 	GetStrategies1         []*Strategy
@@ -36,12 +36,12 @@ func (t *testStrategyStore) AddStrategyCash(strategyCode string, cashDiff float6
 	t.AddStrategyCashCount++
 	return t.AddStrategyCash1
 }
-func (t *testStrategyStore) SetContract(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
-	t.SetContractHistory = append(t.SetContractHistory, strategyCode)
-	t.SetContractHistory = append(t.SetContractHistory, contractPrice)
-	t.SetContractHistory = append(t.SetContractHistory, contractDateTime)
-	t.SetContractCount++
-	return t.SetContract1
+func (t *testStrategyStore) SetBasePrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
+	t.SetBasePriceHistory = append(t.SetBasePriceHistory, strategyCode)
+	t.SetBasePriceHistory = append(t.SetBasePriceHistory, contractPrice)
+	t.SetBasePriceHistory = append(t.SetBasePriceHistory, contractDateTime)
+	t.SetBasePriceCount++
+	return t.SetBasePrice1
 }
 func (t *testStrategyStore) GetStrategies() ([]*Strategy, error) {
 	t.GetStrategiesCount++
@@ -135,7 +135,7 @@ func Test_strategyStore_AddStrategyCash(t *testing.T) {
 	}
 }
 
-func Test_strategyStore_SetContract(t *testing.T) {
+func Test_strategyStore_SetBasePrice(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                  string
@@ -177,7 +177,7 @@ func Test_strategyStore_SetContract(t *testing.T) {
 			want1: nil,
 			wantStore: map[string]*Strategy{
 				"strategy-code-001": {Code: "strategy-code-001"},
-				"strategy-code-002": {Code: "strategy-code-002", LastContractPrice: 10_000, LastContractDateTime: time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local)},
+				"strategy-code-002": {Code: "strategy-code-002", BasePrice: 10_000, BasePriceDateTime: time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local)},
 				"strategy-code-003": {Code: "strategy-code-003"}},
 			wantStrategySaveCount: 1},
 	}
@@ -187,7 +187,7 @@ func Test_strategyStore_SetContract(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			store := &strategyStore{store: test.store, db: test.db}
-			got1 := store.SetContract(test.arg1, test.arg2, test.arg3)
+			got1 := store.SetBasePrice(test.arg1, test.arg2, test.arg3)
 
 			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
 

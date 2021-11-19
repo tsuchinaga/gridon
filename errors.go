@@ -15,4 +15,5 @@ var (
 	ErrAlreadyExists      = errors.New("already exists")
 	ErrNotFound           = errors.New("not found")
 	ErrNotExistsTimeRange = errors.New("not exists time range")
+	ErrCannotGetBasePrice = errors.New("can not get base price")
 )
