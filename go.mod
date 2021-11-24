@@ -2,7 +2,7 @@ module gitlab.com/tsuchinaga/gridon
 
 go 1.17
 
-require gitlab.com/tsuchinaga/kabus-grpc-server v0.0.1
+require gitlab.com/tsuchinaga/kabus-grpc-server v0.0.3
 
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect

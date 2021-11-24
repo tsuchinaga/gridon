@@ -66,6 +66,8 @@ github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1
 gitlab.com/tsuchinaga/go-kabusapi v1.4.0/go.mod h1:yrhgbJRW5L/SaQorC/9Eo8o6KpCimnUf6DcVOukDzJk=
 gitlab.com/tsuchinaga/kabus-grpc-server v0.0.1 h1:xvFV6dMVspKygOy9J3A+eajs4qwsxBdau8hjuZNK4bs=
 gitlab.com/tsuchinaga/kabus-grpc-server v0.0.1/go.mod h1:C2A/MePrItRfcf35lUXM8miTqQflrC2c3anS8U3iv5k=
+gitlab.com/tsuchinaga/kabus-grpc-server v0.0.3 h1:IlUYKttK6aqK2zSsCU1NiFBFZaJ7gfFB+hMJh0aZJTM=
+gitlab.com/tsuchinaga/kabus-grpc-server v0.0.3/go.mod h1:C2A/MePrItRfcf35lUXM8miTqQflrC2c3anS8U3iv5k=
 gitlab.com/tsuchinaga/kabus-virtual-security v0.0.6/go.mod h1:VEGdjtnIFeHZlPMyDj/9JbacELv1ScpnzxqR2mPpYEk=
 go.etcd.io/bbolt v1.3.5 h1:XAzx9gjCb0Rxj7EoqcClPD1d5ZBxZJk0jbuoPHenBt0=
 go.etcd.io/bbolt v1.3.5/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
