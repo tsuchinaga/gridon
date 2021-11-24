@@ -4,16 +4,20 @@ import (
 	"fmt"
 	"math"
 	"sort"
+
+	"gitlab.com/tsuchinaga/kabus-grpc-server/kabuspb"
+	"google.golang.org/grpc/status"
 )
 
 // newOrderService - 新しい注文サービスの取得
-func newOrderService(clock IClock, kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore) IOrderService {
+func newOrderService(clock IClock, kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore, logger ILogger) IOrderService {
 	return &orderService{
 		clock:         clock,
 		kabusAPI:      kabusAPI,
 		strategyStore: strategyStore,
 		orderStore:    orderStore,
 		positionStore: positionStore,
+		logger:        logger,
 	}
 }
 
@@ -36,6 +40,7 @@ type orderService struct {
 	strategyStore IStrategyStore
 	orderStore    IOrderStore
 	positionStore IPositionStore
+	logger        ILogger
 }
 
 // GetActiveOrdersByStrategyCode - 戦略を指定して有効な注文を取り出す
@@ -146,7 +151,30 @@ func (s *orderService) CancelAll(strategy *Strategy) error {
 	for _, o := range orders {
 		_, err := s.kabusAPI.CancelOrder(strategy.Account.Password, o.Code)
 		if err != nil {
-			return err
+			if st, ok := status.FromError(err); ok {
+				// 詳細がなければそのままエラーを返す
+				if len(st.Details()) == 0 {
+					return err
+				}
+
+				// 詳細をループする
+				for _, d := range st.Details() {
+					switch e := d.(type) {
+					case *kabuspb.RequestError:
+						switch e.Code {
+						case 41, 42, 43, 44, 45, 47: // 指定した注文に対してアクションが起こせない、起こす必要がない場合
+							s.logger.Warning(e)
+							continue
+						default:
+							return err
+						}
+					default:
+						return err
+					}
+				}
+			} else {
+				return err
+			}
 		}
 	}
 	return nil
