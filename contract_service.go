@@ -30,7 +30,7 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 	}
 
 	// kabusapiから最終確認以降に変更された注文の一覧を取得
-	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.BasePriceDateTime)
+	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.LastContractDateTime)
 	if err != nil {
 		return err
 	}
@@ -122,8 +122,8 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 	}
 
 	// 戦略の最終約定情報より新しい約定情報であれば更新
-	if strategy.BasePriceDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetBasePrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
+	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
+		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
 			return err
 		}
 	}
@@ -174,8 +174,8 @@ func (s *contractService) exitContract(order *Order, contract Contract) error {
 	}
 
 	// 戦略の最終約定情報より新しい約定情報であれば更新
-	if strategy.BasePriceDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetBasePrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
+	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
+		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
 			return err
 		}
 	}
