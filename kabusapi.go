@@ -280,6 +280,8 @@ func (k *kabusAPI) orderTypeTo(executionType ExecutionType) kabuspb.StockOrderTy
 	switch executionType {
 	case ExecutionTypeMarket:
 		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO
+	case ExecutionTypeMarketMorningClose:
+		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOMC
 	case ExecutionTypeMarketAfternoonClose:
 		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOAC
 	case ExecutionTypeLimit:

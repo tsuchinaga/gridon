@@ -175,30 +175,30 @@ func Test_ExitStrategy_IsRunnable(t *testing.T) {
 			want1:        false},
 		{name: "実行可能でも、実行タイミングがnilならfalse",
 			exitStrategy: ExitStrategy{
-				Runnable: true,
-				Timings:  nil},
+				Runnable:   true,
+				Conditions: nil},
 			arg1:  time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
 			want1: false},
 		{name: "実行可能でも、実行タイミングが空配列ならfalse",
 			exitStrategy: ExitStrategy{
-				Runnable: true,
-				Timings:  []time.Time{}},
+				Runnable:   true,
+				Conditions: []ExitCondition{}},
 			arg1:  time.Date(0, 1, 1, 14, 55, 0, 0, time.Local),
 			want1: false},
 		{name: "実行可能でも、実行タイミングに引数と同じ時分がなければfalse",
 			exitStrategy: ExitStrategy{
 				Runnable: true,
-				Timings: []time.Time{
-					time.Date(0, 1, 1, 11, 25, 0, 0, time.Local),
-					time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				Conditions: []ExitCondition{
+					{ExecutionType: ExecutionTypeMarketMorningClose, Timing: time.Date(0, 1, 1, 11, 25, 0, 0, time.Local)},
+					{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 10, 10, 0, 0, 0, time.Local),
 			want1: false},
 		{name: "実行可能でも、実行タイミングに引数と同じ時分があればtrue",
 			exitStrategy: ExitStrategy{
 				Runnable: true,
-				Timings: []time.Time{
-					time.Date(0, 1, 1, 11, 25, 0, 0, time.Local),
-					time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				Conditions: []ExitCondition{
+					{ExecutionType: ExecutionTypeMarketMorningClose, Timing: time.Date(0, 1, 1, 11, 25, 0, 0, time.Local)},
+					{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			arg1:  time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local),
 			want1: true},
 	}
@@ -386,6 +386,54 @@ func Test_TimeRange_In(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			got1 := test.timeRange.In(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_ExitStrategy_ExecutionType(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		exitStrategy ExitStrategy
+		arg1         time.Time
+		want1        ExecutionType
+	}{
+		{name: "実行可能な戦略でなければunspecified",
+			exitStrategy: ExitStrategy{Runnable: false},
+			arg1:         time.Date(2021, 11, 25, 14, 59, 0, 0, time.Local),
+			want1:        ExecutionTypeUnspecified},
+		{name: "実行可能時間自体がなければunspecified",
+			exitStrategy: ExitStrategy{
+				Runnable:   true,
+				Conditions: nil},
+			arg1:  time.Date(2021, 11, 25, 14, 59, 0, 0, time.Local),
+			want1: ExecutionTypeUnspecified},
+		{name: "実行可能時間でなければunspecified",
+			exitStrategy: ExitStrategy{
+				Runnable: true,
+				Conditions: []ExitCondition{
+					{ExecutionType: ExecutionTypeMarketMorningClose, Timing: time.Date(0, 1, 1, 11, 25, 0, 0, time.Local)},
+					{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			arg1:  time.Date(2021, 11, 25, 14, 59, 0, 0, time.Local),
+			want1: ExecutionTypeUnspecified},
+		{name: "実行可能時間の執行条件を返す",
+			exitStrategy: ExitStrategy{
+				Runnable: true,
+				Conditions: []ExitCondition{
+					{ExecutionType: ExecutionTypeMarketMorningClose, Timing: time.Date(0, 1, 1, 11, 29, 0, 0, time.Local)},
+					{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)}}},
+			arg1:  time.Date(2021, 11, 25, 14, 59, 0, 0, time.Local),
+			want1: ExecutionTypeMarketAfternoonClose},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.exitStrategy.ExecutionType(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
 			}

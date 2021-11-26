@@ -1014,6 +1014,7 @@ func Test_kabusAPI_orderTypeTo(t *testing.T) {
 	}{
 		{name: "未指定 を変換できる", arg1: ExecutionTypeUnspecified, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_UNSPECIFIED},
 		{name: "成行 を変換できる", arg1: ExecutionTypeMarket, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO},
+		{name: "前場引成 を変換できる", arg1: ExecutionTypeMarketMorningClose, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOMC},
 		{name: "後場引成 を変換できる", arg1: ExecutionTypeMarketAfternoonClose, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOAC},
 		{name: "指値 を変換できる", arg1: ExecutionTypeLimit, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_LO},
 	}

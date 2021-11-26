@@ -86,6 +86,7 @@ type ExecutionType string
 const (
 	ExecutionTypeUnspecified          ExecutionType = ""                       // 未指定
 	ExecutionTypeMarket               ExecutionType = "market"                 // 成行
+	ExecutionTypeMarketMorningClose   ExecutionType = "market_morning_close"   // 前場引成
 	ExecutionTypeMarketAfternoonClose ExecutionType = "market_afternoon_close" // 後場引成
 	ExecutionTypeLimit                ExecutionType = "limit"                  // 指値
 )

@@ -186,7 +186,8 @@ func (s *orderService) ExitAll(strategy *Strategy) error {
 		return ErrNilArgument
 	}
 
-	if !strategy.ExitStrategy.IsRunnable(s.clock.Now()) {
+	now := s.clock.Now()
+	if !strategy.ExitStrategy.IsRunnable(now) {
 		return nil
 	}
 
@@ -211,7 +212,7 @@ func (s *orderService) ExitAll(strategy *Strategy) error {
 		MarginTradeType: strategy.MarginTradeType,
 		TradeType:       TradeTypeExit,
 		Side:            strategy.EntrySide.Turn(),
-		ExecutionType:   strategy.ExitStrategy.ExecutionType,
+		ExecutionType:   strategy.ExitStrategy.ExecutionType(now),
 		Price:           0,
 		OrderQuantity:   0,
 		AccountType:     strategy.Account.AccountType,
