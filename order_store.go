@@ -44,6 +44,10 @@ func (s *orderStore) DeployFromDB() error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
+	if err := s.db.CleanupOrders(); err != nil {
+		return err
+	}
+
 	orders, err := s.db.GetActiveOrders()
 	if err != nil {
 		return err

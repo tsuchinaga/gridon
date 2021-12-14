@@ -47,6 +47,10 @@ func (s *positionStore) DeployFromDB() error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
+	if err := s.db.CleanupPositions(); err != nil {
+		return err
+	}
+
 	positions, err := s.db.GetActivePositions()
 	if err != nil {
 		return err

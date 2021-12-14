@@ -160,6 +160,10 @@ func Test_orderStore_DeployFromDB(t *testing.T) {
 		want1     error
 		wantStore map[string]*Order
 	}{
+		{name: "cleanupでエラーを返したらエラーを返す",
+			db:        &testDB{CleanupOrders1: ErrUnknown},
+			want1:     ErrUnknown,
+			wantStore: nil},
 		{name: "dbがエラーを返したらエラーを返す",
 			db:        &testDB{GetActiveOrders2: ErrUnknown},
 			want1:     ErrUnknown,
