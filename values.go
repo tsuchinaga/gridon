@@ -6,13 +6,14 @@ import (
 
 // Symbol - 銘柄情報
 type Symbol struct {
-	Code         string    // 銘柄コード
-	Exchange     Exchange  // 市場
-	TradingUnit  float64   // 売買単位
-	CurrentPrice float64   // 現在値
-	BidPrice     float64   // 最良買い気配値
-	AskPrice     float64   // 最良売り気配値
-	TickGroup    TickGroup // 呼値グループ
+	Code                 string    // 銘柄コード
+	Exchange             Exchange  // 市場
+	TradingUnit          float64   // 売買単位
+	CurrentPrice         float64   // 現在値
+	CurrentPriceDateTime time.Time // 現在値日時
+	BidPrice             float64   // 最良買い気配値
+	AskPrice             float64   // 最良売り気配値
+	TickGroup            TickGroup // 呼値グループ
 }
 
 // SecurityOrder - 証券会社の注文
@@ -117,9 +118,14 @@ func (v *RebalanceStrategy) IsRunnable(now time.Time) bool {
 
 // ExitStrategy - 全エグジット戦略
 type ExitStrategy struct {
-	Runnable      bool          // 実行可能かどうか
+	Runnable   bool            // 実行可能かどうか
+	Conditions []ExitCondition // 全エグジット戦略の一覧
+}
+
+// ExitCondition - 全エグジット戦略の詳細設定
+type ExitCondition struct {
 	ExecutionType ExecutionType // 執行条件
-	Timings       []time.Time   // タイミング(時分)の一覧
+	Timing        time.Time     // タイミング(時分)
 }
 
 // IsRunnable - 全エグジット戦略が実行可能かどうか
@@ -128,12 +134,26 @@ func (v *ExitStrategy) IsRunnable(now time.Time) bool {
 		return false
 	}
 
-	for _, t := range v.Timings {
-		if now.Hour() == t.Hour() && now.Minute() == t.Minute() {
+	for _, ec := range v.Conditions {
+		if now.Hour() == ec.Timing.Hour() && now.Minute() == ec.Timing.Minute() {
 			return true
 		}
 	}
 	return false
+}
+
+// ExecutionType - 指定時刻に行なうエグジット注文の執行条件
+func (v *ExitStrategy) ExecutionType(now time.Time) ExecutionType {
+	if !v.Runnable {
+		return ExecutionTypeUnspecified
+	}
+
+	for _, ec := range v.Conditions {
+		if now.Hour() == ec.Timing.Hour() && now.Minute() == ec.Timing.Minute() {
+			return ec.ExecutionType
+		}
+	}
+	return ExecutionTypeUnspecified
 }
 
 // CancelStrategy - 全取消戦略

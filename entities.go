@@ -14,8 +14,10 @@ type Strategy struct {
 	MarginTradeType      MarginTradeType   // 信用取引区分
 	EntrySide            Side              // エントリー方向
 	Cash                 float64           // 運用中現金
+	BasePrice            float64           // 基準価格
+	BasePriceDateTime    time.Time         // 基準価格日時
 	LastContractPrice    float64           // 最終約定価格
-	LastContractDateTime time.Time         // 最終約定日時
+	LastContractDateTime time.Time         // 最終約定価格日時
 	TickGroup            TickGroup         // 呼値グループ
 	RebalanceStrategy    RebalanceStrategy // リバランス戦略
 	GridStrategy         GridStrategy      // グリッド戦略

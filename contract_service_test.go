@@ -151,7 +151,7 @@ func Test_contractService_entryContract(t *testing.T) {
 			wantSetContractHistory: nil},
 		{name: "戦略の最終約定情報保存に失敗したらエラー",
 			positionStore: &testPositionStore{},
-			strategyStore: &testStrategyStore{GetByCode1: &Strategy{}, SetContract1: ErrUnknown},
+			strategyStore: &testStrategyStore{GetByCode1: &Strategy{}, SetContractPrice1: ErrUnknown},
 			arg1:          &Order{Code: "order-code-001", StrategyCode: "strategy-code-001", SymbolCode: "1475", Exchange: ExchangeToushou, Side: SideBuy, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay},
 			arg2:          Contract{PositionCode: "position-code-001", Price: 2070, Quantity: 4, ContractDateTime: time.Date(2021, 10, 28, 10, 0, 0, 0, time.Local)},
 			want1:         ErrUnknown,
@@ -246,14 +246,14 @@ func Test_contractService_entryContract(t *testing.T) {
 			if !errors.Is(got1, test.want1) ||
 				!reflect.DeepEqual(test.wantSaveHistory, test.positionStore.SaveHistory) ||
 				!reflect.DeepEqual(test.wantAddStrategyCashHistory, test.strategyStore.AddStrategyCashHistory) ||
-				!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractHistory) {
+				!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractPriceHistory) {
 				t.Errorf("%s error\nresult: %+v, %+v, %+v, %+v\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
 					!errors.Is(got1, test.want1),
 					!reflect.DeepEqual(test.wantSaveHistory, test.positionStore.SaveHistory),
 					!reflect.DeepEqual(test.wantAddStrategyCashHistory, test.strategyStore.AddStrategyCashHistory),
-					!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractHistory),
+					!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractPriceHistory),
 					test.want1, test.wantSaveHistory, test.wantAddStrategyCashHistory, test.wantSetContractHistory,
-					got1, test.positionStore.SaveHistory, test.strategyStore.AddStrategyCashHistory, test.strategyStore.SetContractHistory)
+					got1, test.positionStore.SaveHistory, test.strategyStore.AddStrategyCashHistory, test.strategyStore.SetContractPriceHistory)
 			}
 		})
 	}
@@ -339,7 +339,7 @@ func Test_contractService_exitContract(t *testing.T) {
 				}}},
 		{name: "戦略の最終約定情報の更新に失敗したらエラー",
 			positionStore: &testPositionStore{},
-			strategyStore: &testStrategyStore{GetByCode1: &Strategy{}, SetContract1: ErrUnknown},
+			strategyStore: &testStrategyStore{GetByCode1: &Strategy{}, SetContractPrice1: ErrUnknown},
 			arg1: &Order{
 				StrategyCode: "strategy-code-001",
 				HoldPositions: []HoldPosition{
@@ -418,14 +418,14 @@ func Test_contractService_exitContract(t *testing.T) {
 			if !errors.Is(got1, test.want1) ||
 				!reflect.DeepEqual(test.wantExitContractHistory, test.positionStore.ExitContractHistory) ||
 				!reflect.DeepEqual(test.wantAddStrategyCashHistory, test.strategyStore.AddStrategyCashHistory) ||
-				!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractHistory) {
+				!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractPriceHistory) {
 				t.Errorf("%s error\nresult: %+v, %+v, %+v, %+v\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
 					!errors.Is(got1, test.want1),
 					!reflect.DeepEqual(test.wantExitContractHistory, test.positionStore.ExitContractHistory),
 					!reflect.DeepEqual(test.wantAddStrategyCashHistory, test.strategyStore.AddStrategyCashHistory),
-					!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractHistory),
+					!reflect.DeepEqual(test.wantSetContractHistory, test.strategyStore.SetContractPriceHistory),
 					test.want1, test.wantExitContractHistory, test.wantAddStrategyCashHistory, test.wantSetContractHistory,
-					got1, test.positionStore.ExitContractHistory, test.strategyStore.AddStrategyCashHistory, test.strategyStore.SetContractHistory)
+					got1, test.positionStore.ExitContractHistory, test.strategyStore.AddStrategyCashHistory, test.strategyStore.SetContractPriceHistory)
 			}
 		})
 	}

@@ -208,13 +208,14 @@ func (k *kabusAPI) GetSymbol(symbolCode string, exchange Exchange) (*Symbol, err
 		return nil, err
 	}
 	return &Symbol{
-		Code:         symbol.Code,
-		Exchange:     k.exchangeFrom(symbol.Exchange),
-		TradingUnit:  symbol.TradingUnit,
-		CurrentPrice: board.CurrentPrice,
-		BidPrice:     board.BidPrice,
-		AskPrice:     board.AskPrice,
-		TickGroup:    k.priceRangeGroupFrom(symbol.PriceRangeGroup),
+		Code:                 symbol.Code,
+		Exchange:             k.exchangeFrom(symbol.Exchange),
+		TradingUnit:          symbol.TradingUnit,
+		CurrentPrice:         board.CurrentPrice,
+		CurrentPriceDateTime: board.CurrentPriceTime.AsTime().In(time.Local),
+		BidPrice:             board.BidPrice,
+		AskPrice:             board.AskPrice,
+		TickGroup:            k.priceRangeGroupFrom(symbol.PriceRangeGroup),
 	}, nil
 }
 
@@ -279,6 +280,8 @@ func (k *kabusAPI) orderTypeTo(executionType ExecutionType) kabuspb.StockOrderTy
 	switch executionType {
 	case ExecutionTypeMarket:
 		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO
+	case ExecutionTypeMarketMorningClose:
+		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOMC
 	case ExecutionTypeMarketAfternoonClose:
 		return kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOAC
 	case ExecutionTypeLimit:

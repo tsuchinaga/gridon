@@ -1,5 +1,7 @@
 package gridon
 
+import "time"
+
 // newContractService - 新しい約定管理サービスの取得
 func newContractService(kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore) IContractService {
 	return &contractService{
@@ -30,7 +32,8 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 	}
 
 	// kabusapiから最終確認以降に変更された注文の一覧を取得
-	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.LastContractDateTime)
+	// 約定日時より少し前にキャンセルが入る可能性があるから、1分の猶予を持つようにする
+	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.LastContractDateTime.Add(-1*time.Minute))
 	if err != nil {
 		return err
 	}
@@ -123,7 +126,7 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 
 	// 戦略の最終約定情報より新しい約定情報であれば更新
 	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetContract(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
+		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
 			return err
 		}
 	}
@@ -175,7 +178,7 @@ func (s *contractService) exitContract(order *Order, contract Contract) error {
 
 	// 戦略の最終約定情報より新しい約定情報であれば更新
 	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetContract(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
+		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
 			return err
 		}
 	}

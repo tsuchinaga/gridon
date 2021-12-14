@@ -173,16 +173,17 @@ func Test_kabusAPI_GetSymbol(t *testing.T) {
 		{name: "symbolもboardも取得できたら情報を返す",
 			kabusServiceClient: &testKabusServiceClient{
 				GetSymbol1: &kabuspb.Symbol{Code: "1475", Exchange: kabuspb.Exchange_EXCHANGE_TOUSHOU, TradingUnit: 1, UpperLimit: 2576, LowerLimit: 1576},
-				GetBoard1:  &kabuspb.Board{CurrentPrice: 2076, CalculationPrice: 2076, BidPrice: 2075, AskPrice: 2077}},
+				GetBoard1:  &kabuspb.Board{CurrentPrice: 2076, CurrentPriceTime: timestamppb.New(time.Date(2021, 11, 19, 10, 0, 0, 0, time.Local)), CalculationPrice: 2076, BidPrice: 2075, AskPrice: 2077}},
 			arg1: "1475",
 			arg2: ExchangeToushou,
 			want1: &Symbol{
-				Code:         "1475",
-				Exchange:     ExchangeToushou,
-				TradingUnit:  1,
-				CurrentPrice: 2076,
-				BidPrice:     2075,
-				AskPrice:     2077,
+				Code:                 "1475",
+				Exchange:             ExchangeToushou,
+				TradingUnit:          1,
+				CurrentPrice:         2076,
+				CurrentPriceDateTime: time.Date(2021, 11, 19, 10, 0, 0, 0, time.Local),
+				BidPrice:             2075,
+				AskPrice:             2077,
 			}},
 	}
 
@@ -1013,6 +1014,7 @@ func Test_kabusAPI_orderTypeTo(t *testing.T) {
 	}{
 		{name: "未指定 を変換できる", arg1: ExecutionTypeUnspecified, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_UNSPECIFIED},
 		{name: "成行 を変換できる", arg1: ExecutionTypeMarket, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_MO},
+		{name: "前場引成 を変換できる", arg1: ExecutionTypeMarketMorningClose, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOMC},
 		{name: "後場引成 を変換できる", arg1: ExecutionTypeMarketAfternoonClose, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_MOAC},
 		{name: "指値 を変換できる", arg1: ExecutionTypeLimit, want: kabuspb.StockOrderType_STOCK_ORDER_TYPE_LO},
 	}

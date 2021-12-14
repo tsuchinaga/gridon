@@ -5,6 +5,11 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"gitlab.com/tsuchinaga/kabus-grpc-server/kabuspb"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type testOrderService struct {
@@ -88,11 +93,24 @@ func (t *testOrderService) ExitAll(strategy *Strategy) error {
 
 func Test_orderService_CancelAll(t *testing.T) {
 	t.Parallel()
+
+	simpleSt := status.New(codes.Internal, "simple status")
+
+	notRequestErrSt := status.New(codes.Internal, "not request status")
+	notRequestErrStDt, _ := notRequestErrSt.WithDetails(&kabuspb.Order{})
+
+	requestErr47St := status.New(codes.Internal, "request 47 status")
+	requestErr47StDt, _ := requestErr47St.WithDetails(&kabuspb.RequestError{Code: 47})
+
+	requestErr2St := status.New(codes.Internal, "request 2 status")
+	requestErr2StDt, _ := requestErr2St.WithDetails(&kabuspb.RequestError{Code: 2})
+
 	tests := []struct {
 		name                   string
 		clock                  *testClock
 		orderStore             *testOrderStore
 		kabusAPI               *testKabusAPI
+		logger                 *testLogger
 		arg1                   *Strategy
 		want1                  error
 		wantCancelOrderHistory []interface{}
@@ -101,13 +119,15 @@ func Test_orderService_CancelAll(t *testing.T) {
 			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
 			orderStore:             &testOrderStore{},
 			kabusAPI:               &testKabusAPI{},
+			logger:                 &testLogger{},
 			arg1:                   nil,
 			want1:                  ErrNilArgument,
 			wantCancelOrderHistory: nil},
-		{name: "戦略が実行可能で化ければ何もせずにnil",
+		{name: "戦略が実行可能でなければ何もせずにnil",
 			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
 			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode2: ErrUnknown},
 			kabusAPI:               &testKabusAPI{},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Code: "strategy-code-001", CancelStrategy: CancelStrategy{Runnable: false}},
 			want1:                  nil,
 			wantCancelOrderHistory: nil},
@@ -115,6 +135,7 @@ func Test_orderService_CancelAll(t *testing.T) {
 			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
 			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode2: ErrUnknown},
 			kabusAPI:               &testKabusAPI{},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Code: "strategy-code-001", CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			want1:                  ErrUnknown,
 			wantCancelOrderHistory: nil},
@@ -122,6 +143,7 @@ func Test_orderService_CancelAll(t *testing.T) {
 			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
 			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{}},
 			kabusAPI:               &testKabusAPI{},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Code: "strategy-code-001", CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			want1:                  nil,
 			wantCancelOrderHistory: nil},
@@ -129,6 +151,7 @@ func Test_orderService_CancelAll(t *testing.T) {
 			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
 			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}, {Code: "order-code-002"}, {Code: "order-code-003"}}},
 			kabusAPI:               &testKabusAPI{CancelOrder2: ErrUnknown},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Code: "strategy-code-001", Account: Account{Password: "Password1234"}, CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			want1:                  ErrUnknown,
 			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001"}},
@@ -136,16 +159,49 @@ func Test_orderService_CancelAll(t *testing.T) {
 			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
 			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}, {Code: "order-code-002"}, {Code: "order-code-003"}}},
 			kabusAPI:               &testKabusAPI{CancelOrder1: OrderResult{Result: false, ResultCode: -1}},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Code: "strategy-code-001", Account: Account{Password: "Password1234"}, CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 			want1:                  nil,
 			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001", "Password1234", "order-code-002", "Password1234", "order-code-003"}},
+		{name: "取消注文エラーで詳細がなければそのままエラーを返す",
+			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
+			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}, {Code: "order-code-002"}, {Code: "order-code-003"}}},
+			kabusAPI:               &testKabusAPI{CancelOrder2: simpleSt.Err()},
+			logger:                 &testLogger{},
+			arg1:                   &Strategy{Code: "strategy-code-001", Account: Account{Password: "Password1234"}, CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			want1:                  simpleSt.Err(),
+			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001"}},
+		{name: "取消注文エラーで詳細があっても、kabuspb.RequestErrorでなければエラーを返す",
+			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
+			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}, {Code: "order-code-002"}, {Code: "order-code-003"}}},
+			kabusAPI:               &testKabusAPI{CancelOrder2: notRequestErrStDt.Err()},
+			logger:                 &testLogger{},
+			arg1:                   &Strategy{Code: "strategy-code-001", Account: Account{Password: "Password1234"}, CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			want1:                  notRequestErrStDt.Err(),
+			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001"}},
+		{name: "取消注文エラーで詳細があって、取消対象の注文が取り消せない状態であればスキップして処理する",
+			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
+			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}, {Code: "order-code-002"}, {Code: "order-code-003"}}},
+			kabusAPI:               &testKabusAPI{CancelOrder2: requestErr47StDt.Err()},
+			logger:                 &testLogger{},
+			arg1:                   &Strategy{Code: "strategy-code-001", Account: Account{Password: "Password1234"}, CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			want1:                  nil,
+			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001", "Password1234", "order-code-002", "Password1234", "order-code-003"}},
+		{name: "取消注文エラーで詳細があって、取消対象の注文が取り消せない状態以外のエラーであればエラーを返す",
+			clock:                  &testClock{Now1: time.Date(2021, 11, 10, 14, 55, 0, 0, time.Local)},
+			orderStore:             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}, {Code: "order-code-002"}, {Code: "order-code-003"}}},
+			kabusAPI:               &testKabusAPI{CancelOrder2: requestErr2StDt.Err()},
+			logger:                 &testLogger{},
+			arg1:                   &Strategy{Code: "strategy-code-001", Account: Account{Password: "Password1234"}, CancelStrategy: CancelStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			want1:                  requestErr2StDt.Err(),
+			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001"}},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			service := &orderService{clock: test.clock, kabusAPI: test.kabusAPI, orderStore: test.orderStore}
+			service := &orderService{clock: test.clock, kabusAPI: test.kabusAPI, orderStore: test.orderStore, logger: test.logger}
 			got1 := service.CancelAll(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) || !reflect.DeepEqual(test.wantCancelOrderHistory, test.kabusAPI.CancelOrderHistory) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantCancelOrderHistory, got1, test.kabusAPI.CancelOrderHistory)
@@ -189,7 +245,7 @@ func Test_ExitAll(t *testing.T) {
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode2: ErrUnknown},
 			orderStore:    &testOrderStore{},
 			kabusAPI:      &testKabusAPI{},
-			arg1:          &Strategy{ExitStrategy: ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			arg1:          &Strategy{ExitStrategy: ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1:         ErrUnknown,
 			wantGetActivePositionsByStrategyCodeCount: 1},
 		{name: "取り出したポジションがなければnil",
@@ -197,7 +253,7 @@ func Test_ExitAll(t *testing.T) {
 			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{}},
 			orderStore:    &testOrderStore{},
 			kabusAPI:      &testKabusAPI{},
-			arg1:          &Strategy{Code: "strategy-code-001", ExitStrategy: ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			arg1:          &Strategy{Code: "strategy-code-001", ExitStrategy: ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1:         nil,
 			wantGetActivePositionsByStrategyCodeCount: 1},
 		{name: "ポジションのholdに失敗したらreleaseしてerror",
@@ -211,7 +267,7 @@ func Test_ExitAll(t *testing.T) {
 				Hold1: ErrUnknown},
 			orderStore: &testOrderStore{},
 			kabusAPI:   &testKabusAPI{},
-			arg1:       &Strategy{Code: "strategy-code-001", ExitStrategy: ExitStrategy{Runnable: true, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+			arg1:       &Strategy{Code: "strategy-code-001", ExitStrategy: ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1:      ErrUnknown,
 			wantGetActivePositionsByStrategyCodeCount: 1,
 			wantHoldCount: 1},
@@ -232,7 +288,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -248,7 +304,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -261,7 +317,7 @@ func Test_ExitAll(t *testing.T) {
 					MarginTradeType:  MarginTradeTypeDay,
 					TradeType:        TradeTypeExit,
 					Side:             SideSell,
-					ExecutionType:    ExecutionTypeMarket,
+					ExecutionType:    ExecutionTypeMarketAfternoonClose,
 					Price:            0,
 					OrderQuantity:    600,
 					ContractQuantity: 0,
@@ -294,7 +350,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -310,7 +366,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -324,7 +380,7 @@ func Test_ExitAll(t *testing.T) {
 					MarginTradeType:  MarginTradeTypeDay,
 					TradeType:        TradeTypeExit,
 					Side:             SideSell,
-					ExecutionType:    ExecutionTypeMarket,
+					ExecutionType:    ExecutionTypeMarketAfternoonClose,
 					Price:            0,
 					OrderQuantity:    350,
 					ContractQuantity: 0,
@@ -350,7 +406,7 @@ func Test_ExitAll(t *testing.T) {
 				MarginTradeType:  MarginTradeTypeDay,
 				TradeType:        TradeTypeExit,
 				Side:             SideSell,
-				ExecutionType:    ExecutionTypeMarket,
+				ExecutionType:    ExecutionTypeMarketAfternoonClose,
 				Price:            0,
 				OrderQuantity:    350,
 				ContractQuantity: 0,
@@ -382,7 +438,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -398,7 +454,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarket, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -412,7 +468,7 @@ func Test_ExitAll(t *testing.T) {
 					MarginTradeType:  MarginTradeTypeDay,
 					TradeType:        TradeTypeExit,
 					Side:             SideSell,
-					ExecutionType:    ExecutionTypeMarket,
+					ExecutionType:    ExecutionTypeMarketAfternoonClose,
 					Price:            0,
 					OrderQuantity:    350,
 					ContractQuantity: 0,
@@ -438,7 +494,7 @@ func Test_ExitAll(t *testing.T) {
 				MarginTradeType:  MarginTradeTypeDay,
 				TradeType:        TradeTypeExit,
 				Side:             SideSell,
-				ExecutionType:    ExecutionTypeMarket,
+				ExecutionType:    ExecutionTypeMarketAfternoonClose,
 				Price:            0,
 				OrderQuantity:    350,
 				ContractQuantity: 0,
@@ -470,7 +526,7 @@ func Test_ExitAll(t *testing.T) {
 				Product:         ProductMargin,
 				MarginTradeType: MarginTradeTypeDay,
 				EntrySide:       SideBuy,
-				ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarketAfternoonClose, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+				ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 				Account: Account{
 					Password:    "Password1234",
 					AccountType: AccountTypeSpecific}},
@@ -486,7 +542,7 @@ func Test_ExitAll(t *testing.T) {
 					Product:         ProductMargin,
 					MarginTradeType: MarginTradeTypeDay,
 					EntrySide:       SideBuy,
-					ExitStrategy:    ExitStrategy{Runnable: true, ExecutionType: ExecutionTypeMarketAfternoonClose, Timings: []time.Time{time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
+					ExitStrategy:    ExitStrategy{Runnable: true, Conditions: []ExitCondition{{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
 					Account: Account{
 						Password:    "Password1234",
 						AccountType: AccountTypeSpecific}},
@@ -1846,14 +1902,16 @@ func Test_newOrderService(t *testing.T) {
 	strategyStore := &testStrategyStore{}
 	orderStore := &testOrderStore{}
 	positionStore := &testPositionStore{}
+	logger := &testLogger{}
 	want1 := &orderService{
 		clock:         clock,
 		kabusAPI:      kabusAPI,
 		strategyStore: strategyStore,
 		orderStore:    orderStore,
 		positionStore: positionStore,
+		logger:        logger,
 	}
-	got1 := newOrderService(clock, kabusAPI, strategyStore, orderStore, positionStore)
+	got1 := newOrderService(clock, kabusAPI, strategyStore, orderStore, positionStore, logger)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}

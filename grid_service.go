@@ -1,12 +1,13 @@
 package gridon
 
 // newGridService - 新しいグリッドサービスの取得
-func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService) IGridService {
+func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService, strategyStore IStrategyStore) IGridService {
 	return &gridService{
-		clock:        clock,
-		tick:         tick,
-		kabusAPI:     kabusAPI,
-		orderService: orderService,
+		clock:         clock,
+		tick:          tick,
+		kabusAPI:      kabusAPI,
+		orderService:  orderService,
+		strategyStore: strategyStore,
 	}
 }
 
@@ -17,10 +18,11 @@ type IGridService interface {
 
 // gridService - グリッドサービス
 type gridService struct {
-	clock        IClock
-	tick         ITick
-	kabusAPI     IKabusAPI
-	orderService IOrderService
+	clock         IClock
+	tick          ITick
+	kabusAPI      IKabusAPI
+	orderService  IOrderService
+	strategyStore IStrategyStore
 }
 
 // Leveling - グリッドの整地
@@ -47,9 +49,14 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 		return err
 	}
 
+	// 乗せるべきgridのリストを作っておく
+	grids := []float64{basePrice} // 基準価格も有効なグリッドなので追加しておく
+	for i := 1; i <= strategy.GridStrategy.NumberOfGrids; i++ {
+		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, i*strategy.GridStrategy.Width))
+		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*i*strategy.GridStrategy.Width))
+	}
+
 	// 基準価格から最大グリッド数より外にある注文を特定して取り消す
-	upper := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
-	lower := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*strategy.GridStrategy.NumberOfGrids*strategy.GridStrategy.Width)
 	gridQuantities := make(map[float64]float64)
 	for _, o := range orders {
 		// 指値注文以外はスキップ
@@ -57,7 +64,15 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 			continue
 		}
 
-		if lower <= o.Price && o.Price <= upper {
+		var contain bool
+		for _, g := range grids {
+			if g == o.Price {
+				contain = true
+				break
+			}
+		}
+
+		if contain {
 			gridQuantities[o.Price] += o.OrderQuantity - o.ContractQuantity
 		} else {
 			if err := s.orderService.Cancel(strategy, o.Code); err != nil {
@@ -120,8 +135,8 @@ func (s *gridService) getBasePrice(strategy *Strategy) (float64, error) {
 
 	now := s.clock.Now()
 	for _, tr := range strategy.GridStrategy.TimeRanges {
-		if tr.In(now) && tr.In(strategy.LastContractDateTime) {
-			return strategy.LastContractPrice, nil
+		if tr.In(now) && tr.In(strategy.BasePriceDateTime) {
+			return strategy.BasePrice, nil
 		}
 	}
 
@@ -129,7 +144,18 @@ func (s *gridService) getBasePrice(strategy *Strategy) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return symbol.CurrentPrice, nil
+
+	// 価格が有効なものかをチェックし、有効なら戦略に保持して基準価格にする
+	for _, tr := range strategy.GridStrategy.TimeRanges {
+		if tr.In(now) && tr.In(symbol.CurrentPriceDateTime) {
+			if err := s.strategyStore.SetBasePrice(strategy.Code, symbol.CurrentPrice, symbol.CurrentPriceDateTime); err != nil {
+				return 0, err
+			}
+			return symbol.CurrentPrice, nil
+		}
+	}
+
+	return 0, ErrCannotGetBasePrice
 }
 
 // sendGridOrder - グリッド注文を作成し、送信する
