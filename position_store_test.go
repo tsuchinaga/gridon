@@ -368,6 +368,10 @@ func Test_positionStore_DeployFromDB(t *testing.T) {
 		want1     error
 		wantStore map[string]*Position
 	}{
+		{name: "cleanupでエラーを返したらエラーを返す",
+			db:        &testDB{CleanupPositions1: ErrUnknown},
+			want1:     ErrUnknown,
+			wantStore: nil},
 		{name: "dbがエラーを返したらエラーを返す",
 			db:        &testDB{GetActivePositions2: ErrUnknown},
 			want1:     ErrUnknown,

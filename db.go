@@ -73,6 +73,8 @@ type IDB interface {
 	SaveOrder(order *Order) error
 	GetActivePositions() ([]*Position, error)
 	SavePosition(position *Position) error
+	CleanupOrders() error
+	CleanupPositions() error
 }
 
 // db - データベース
@@ -237,5 +239,23 @@ func (d *db) SavePosition(position *Position) error {
 	}
 
 	_ = tx.Commit()
+	return nil
+}
+
+// CleanupOrders - 不要な注文データの削除
+func (d *db) CleanupOrders() error {
+	if err := d.db.Exec(`delete from orders where status != 'in_order'`); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CleanupPositions - 不要なポジションデータの削除
+func (d *db) CleanupPositions() error {
+	if err := d.db.Exec(`delete from positions where ownedquantity <= 0`); err != nil {
+		return err
+	}
+
 	return nil
 }
