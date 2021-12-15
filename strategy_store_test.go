@@ -73,15 +73,18 @@ func Test_strategyStore_AddStrategyCash(t *testing.T) {
 	tests := []struct {
 		name                  string
 		db                    *testDB
+		logger                *testLogger
 		store                 map[string]*Strategy
 		arg1                  string
 		arg2                  float64
 		want1                 error
 		wantStore             map[string]*Strategy
 		wantStrategySaveCount int
+		wantCashFlowCount     int
 	}{
 		{name: "該当する戦略がなければ変更しない",
-			db: &testDB{},
+			db:     &testDB{},
+			logger: &testLogger{},
 			store: map[string]*Strategy{
 				"strategy-code-001": {Code: "strategy-code-001"},
 				"strategy-code-002": {Code: "strategy-code-002"},
@@ -94,9 +97,11 @@ func Test_strategyStore_AddStrategyCash(t *testing.T) {
 				"strategy-code-001": {Code: "strategy-code-001"},
 				"strategy-code-002": {Code: "strategy-code-002"},
 				"strategy-code-003": {Code: "strategy-code-003"}},
-			wantStrategySaveCount: 0},
+			wantStrategySaveCount: 0,
+			wantCashFlowCount:     0},
 		{name: "該当する戦略の現金余力に加算できる",
-			db: &testDB{},
+			db:     &testDB{},
+			logger: &testLogger{},
 			store: map[string]*Strategy{
 				"strategy-code-001": {Code: "strategy-code-001"},
 				"strategy-code-002": {Code: "strategy-code-002", Cash: 100_000},
@@ -109,9 +114,11 @@ func Test_strategyStore_AddStrategyCash(t *testing.T) {
 				"strategy-code-001": {Code: "strategy-code-001"},
 				"strategy-code-002": {Code: "strategy-code-002", Cash: 110_000},
 				"strategy-code-003": {Code: "strategy-code-003"}},
-			wantStrategySaveCount: 1},
+			wantStrategySaveCount: 1,
+			wantCashFlowCount:     1},
 		{name: "該当する戦略の現金余力に減算できる",
-			db: &testDB{},
+			db:     &testDB{},
+			logger: &testLogger{},
 			store: map[string]*Strategy{
 				"strategy-code-001": {Code: "strategy-code-001"},
 				"strategy-code-002": {Code: "strategy-code-002", Cash: 100_000},
@@ -124,22 +131,26 @@ func Test_strategyStore_AddStrategyCash(t *testing.T) {
 				"strategy-code-001": {Code: "strategy-code-001"},
 				"strategy-code-002": {Code: "strategy-code-002", Cash: 90_000},
 				"strategy-code-003": {Code: "strategy-code-003"}},
-			wantStrategySaveCount: 1},
+			wantStrategySaveCount: 1,
+			wantCashFlowCount:     1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			store := &strategyStore{store: test.store, db: test.db}
+			store := &strategyStore{store: test.store, db: test.db, logger: test.logger}
 			got1 := store.AddStrategyCash(test.arg1, test.arg2)
 
 			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
 
-			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantStrategySaveCount, test.db.SaveStrategyCount) {
-				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
-					test.want1, test.wantStore, test.wantStrategySaveCount,
-					got1, store.store, test.db.SaveStrategyCount)
+			if !errors.Is(got1, test.want1) ||
+				!reflect.DeepEqual(test.wantStore, store.store) ||
+				!reflect.DeepEqual(test.wantStrategySaveCount, test.db.SaveStrategyCount) ||
+				!reflect.DeepEqual(test.wantCashFlowCount, test.logger.CashFlowCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantStrategySaveCount, test.wantCashFlowCount,
+					got1, store.store, test.db.SaveStrategyCount, test.logger.CashFlowCount)
 			}
 		})
 	}
@@ -335,8 +346,9 @@ func Test_getStrategyStore(t *testing.T) {
 	t.Parallel()
 
 	db := &testDB{}
-	want1 := &strategyStore{store: map[string]*Strategy{}, db: db}
-	got1 := getStrategyStore(db)
+	logger := &testLogger{}
+	want1 := &strategyStore{store: map[string]*Strategy{}, db: db, logger: logger}
+	got1 := getStrategyStore(db, logger)
 
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)

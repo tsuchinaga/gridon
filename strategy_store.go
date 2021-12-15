@@ -1,6 +1,7 @@
 package gridon
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -12,14 +13,15 @@ var (
 )
 
 // getStrategyStore - 戦略ストアの取得
-func getStrategyStore(db IDB) IStrategyStore {
+func getStrategyStore(db IDB, logger ILogger) IStrategyStore {
 	strategyStoreSingletonMtx.Lock()
 	defer strategyStoreSingletonMtx.Unlock()
 
 	if strategyStoreSingleton == nil {
 		strategyStoreSingleton = &strategyStore{
-			store: map[string]*Strategy{},
-			db:    db,
+			store:  map[string]*Strategy{},
+			db:     db,
+			logger: logger,
 		}
 	}
 
@@ -40,9 +42,10 @@ type IStrategyStore interface {
 
 // strategyStore - 戦略ストア
 type strategyStore struct {
-	store map[string]*Strategy
-	db    IDB
-	mtx   sync.Mutex
+	store  map[string]*Strategy
+	db     IDB
+	logger ILogger
+	mtx    sync.Mutex
 }
 
 // DeployFromDB - DBからmapに展開する
@@ -98,8 +101,10 @@ func (s *strategyStore) AddStrategyCash(strategyCode string, cashDiff float64) e
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	if _, ok := s.store[strategyCode]; ok {
-		s.store[strategyCode].Cash += cashDiff
+	if strategy, ok := s.store[strategyCode]; ok {
+		calc := s.store[strategyCode].Cash + cashDiff
+		s.logger.CashFlow(fmt.Sprintf("strategyCode: %s, symbolCode: %s, cash: %.2f, diff: %.2f, calc: %.2f", strategy.Code, strategy.SymbolCode, strategy.Cash, cashDiff, calc))
+		s.store[strategyCode].Cash = calc
 
 		go s.db.SaveStrategy(s.store[strategyCode])
 	}
