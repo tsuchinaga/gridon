@@ -31,12 +31,12 @@ func NewService() (IService, error) {
 	return &service{
 		logger:        logger,
 		clock:         newClock(),
-		strategyStore: getStrategyStore(db),
+		strategyStore: getStrategyStore(db, logger),
 		orderStore:    getOrderStore(db),
 		positionStore: getPositionStore(db),
 		contractService: newContractService(
 			newKabusAPI(kabucom),
-			getStrategyStore(db),
+			getStrategyStore(db, logger),
 			getOrderStore(db),
 			getPositionStore(db)),
 		rebalanceService: newRebalanceService(
@@ -46,7 +46,7 @@ func NewService() (IService, error) {
 			newOrderService(
 				newClock(),
 				newKabusAPI(kabucom),
-				getStrategyStore(db),
+				getStrategyStore(db, logger),
 				getOrderStore(db),
 				getPositionStore(db),
 				logger)),
@@ -57,21 +57,21 @@ func NewService() (IService, error) {
 			newOrderService(
 				newClock(),
 				newKabusAPI(kabucom),
-				getStrategyStore(db),
+				getStrategyStore(db, logger),
 				getOrderStore(db),
 				getPositionStore(db),
 				logger),
-			getStrategyStore(db)),
+			getStrategyStore(db, logger)),
 		orderService: newOrderService(
 			newClock(),
 			newKabusAPI(kabucom),
-			getStrategyStore(db),
+			getStrategyStore(db, logger),
 			getOrderStore(db),
 			getPositionStore(db),
 			logger),
 		strategyService: newStrategyService(
 			newKabusAPI(kabucom),
-			getStrategyStore(db)),
+			getStrategyStore(db, logger)),
 	}, nil
 }
 
