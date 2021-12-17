@@ -33,7 +33,7 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 
 	// kabusapiから最終確認以降に変更された注文の一覧を取得
 	// 約定日時より少し前にキャンセルが入る可能性があるから、1分の猶予を持つようにする
-	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.LastContractDateTime.Add(-1*time.Minute))
+	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.SymbolCode, strategy.LastContractDateTime.Add(-1*time.Minute))
 	if err != nil {
 		return err
 	}

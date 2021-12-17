@@ -35,8 +35,9 @@ type testKabusAPI struct {
 func (t *testKabusAPI) GetSymbol(string, Exchange) (*Symbol, error) {
 	return t.GetSymbol1, t.GetSymbol2
 }
-func (t *testKabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error) {
+func (t *testKabusAPI) GetOrders(product Product, symbolCode string, updateDateTime time.Time) ([]SecurityOrder, error) {
 	t.GetOrdersHistory = append(t.GetOrdersHistory, product)
+	t.GetOrdersHistory = append(t.GetOrdersHistory, symbolCode)
 	t.GetOrdersHistory = append(t.GetOrdersHistory, updateDateTime)
 	t.GetOrdersCount++
 	return t.GetOrders1, t.GetOrders2
@@ -758,19 +759,22 @@ func Test_kabusAPI_GetOrders(t *testing.T) {
 		name               string
 		kabusServiceClient *testKabusServiceClient
 		arg1               Product
-		arg2               time.Time
+		arg2               string
+		arg3               time.Time
 		want1              []SecurityOrder
 		want2              error
 	}{
 		{name: "errが返されたらerrを返す",
 			kabusServiceClient: &testKabusServiceClient{GetOrders2: ErrUnknown},
 			arg1:               ProductStock,
-			arg2:               time.Date(2021, 10, 22, 10, 0, 0, 0, time.Local),
+			arg2:               "1475",
+			arg3:               time.Date(2021, 10, 22, 10, 0, 0, 0, time.Local),
 			want2:              ErrUnknown},
 		{name: "ordersが空なら空配列を返す",
 			kabusServiceClient: &testKabusServiceClient{GetOrders1: &kabuspb.Orders{Orders: []*kabuspb.Order{}}},
 			arg1:               ProductStock,
-			arg2:               time.Date(2021, 10, 22, 10, 0, 0, 0, time.Local),
+			arg2:               "1475",
+			arg3:               time.Date(2021, 10, 22, 10, 0, 0, 0, time.Local),
 			want1:              []SecurityOrder{}},
 		{name: "ordersの中身を変換して返す",
 			kabusServiceClient: &testKabusServiceClient{GetOrders1: &kabuspb.Orders{Orders: []*kabuspb.Order{
@@ -821,7 +825,8 @@ func Test_kabusAPI_GetOrders(t *testing.T) {
 					},
 				}}}},
 			arg1: ProductStock,
-			arg2: time.Date(2021, 10, 22, 10, 0, 0, 0, time.Local),
+			arg2: "1475",
+			arg3: time.Date(2021, 10, 22, 10, 0, 0, 0, time.Local),
 			want1: []SecurityOrder{
 				{
 					Code:             "20211022A02N21800824",
@@ -871,7 +876,7 @@ func Test_kabusAPI_GetOrders(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			kabusAPI := &kabusAPI{kabucom: test.kabusServiceClient}
-			got1, got2 := kabusAPI.GetOrders(test.arg1, test.arg2)
+			got1, got2 := kabusAPI.GetOrders(test.arg1, test.arg2, test.arg3)
 			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
@@ -901,7 +906,7 @@ func Test_kabusAPI_GetOrders_Execute(t *testing.T) {
 		log.Fatalln(err)
 	}
 	kabusAPI := &kabusAPI{kabucom: kabuspb.NewKabusServiceClient(conn)}
-	orders, err := kabusAPI.GetOrders(ProductMargin, time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local))
+	orders, err := kabusAPI.GetOrders(ProductMargin, "1475", time.Date(2021, 12, 17, 10, 0, 0, 0, time.Local))
 	t.Logf("orders: %+v, err: %+v\n", orders, err)
 }
 
