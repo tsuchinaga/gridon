@@ -441,8 +441,8 @@ func Test_contractService_Confirm(t *testing.T) {
 		name                                   string
 		arg1                                   *Strategy
 		want1                                  error
-		wantGetOrdersCount                     int
 		wantGetActiveOrdersByStrategyCodeCount int
+		wantGetOrdersCount                     int
 		wantSaveHistory                        []interface{}
 	}{
 		{name: "引数がnilならerror",
@@ -452,14 +452,6 @@ func Test_contractService_Confirm(t *testing.T) {
 			strategyStore: &testStrategyStore{GetByCode1: &Strategy{}},
 			arg1:          nil,
 			want1:         ErrNilArgument},
-		{name: "kabusapiから注文一覧が取れなければerror",
-			kabusAPI:           &testKabusAPI{GetOrders2: ErrUnknown},
-			orderStore:         &testOrderStore{},
-			positionStore:      &testPositionStore{},
-			strategyStore:      &testStrategyStore{GetByCode1: &Strategy{}},
-			arg1:               &Strategy{Code: "strategy-code-001"},
-			want1:              ErrUnknown,
-			wantGetOrdersCount: 1},
 		{name: "storeから注文一覧が取れなければerror",
 			kabusAPI:                               &testKabusAPI{GetOrders1: []SecurityOrder{}},
 			orderStore:                             &testOrderStore{GetActiveOrdersByStrategyCode2: ErrUnknown},
@@ -467,22 +459,27 @@ func Test_contractService_Confirm(t *testing.T) {
 			strategyStore:                          &testStrategyStore{GetByCode1: &Strategy{}},
 			arg1:                                   &Strategy{Code: "strategy-code-001"},
 			want1:                                  ErrUnknown,
-			wantGetOrdersCount:                     1,
 			wantGetActiveOrdersByStrategyCodeCount: 1},
-		{name: "kabusapiから返ってきた注文が空なら何もしない",
+		{name: "storeからの注文一覧が空なら何もせずに終わり",
 			kabusAPI:                               &testKabusAPI{GetOrders1: []SecurityOrder{}},
 			orderStore:                             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{}},
 			positionStore:                          &testPositionStore{},
 			strategyStore:                          &testStrategyStore{GetByCode1: &Strategy{}},
 			arg1:                                   &Strategy{Code: "strategy-code-001"},
 			want1:                                  nil,
-			wantGetOrdersCount:                     1,
 			wantGetActiveOrdersByStrategyCodeCount: 1},
-		{name: "storeから返ってきた注文が空なら何もしない",
-			kabusAPI: &testKabusAPI{GetOrders1: []SecurityOrder{
-				{Code: "order-code-001"},
-			}},
-			orderStore:                             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{}},
+		{name: "kabusapiから注文一覧が取れなければerror",
+			kabusAPI:                               &testKabusAPI{GetOrders2: ErrUnknown},
+			orderStore:                             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}}},
+			positionStore:                          &testPositionStore{},
+			strategyStore:                          &testStrategyStore{GetByCode1: &Strategy{}},
+			arg1:                                   &Strategy{Code: "strategy-code-001"},
+			want1:                                  ErrUnknown,
+			wantGetActiveOrdersByStrategyCodeCount: 1,
+			wantGetOrdersCount:                     1},
+		{name: "kabusapiから返ってきた注文が空なら何もしない",
+			kabusAPI:                               &testKabusAPI{GetOrders1: []SecurityOrder{}},
+			orderStore:                             &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{{Code: "order-code-001"}}},
 			positionStore:                          &testPositionStore{},
 			strategyStore:                          &testStrategyStore{GetByCode1: &Strategy{}},
 			arg1:                                   &Strategy{Code: "strategy-code-001"},
