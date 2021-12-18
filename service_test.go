@@ -360,6 +360,7 @@ func Test_service_Start(t *testing.T) {
 				strategyStore: test.strategyStore,
 				orderStore:    test.orderStore,
 				positionStore: test.positionStore,
+				webService:    &testWebService{},
 			}
 			go func() {
 				got1 = service.Start()

@@ -28,27 +28,31 @@ func NewService() (IService, error) {
 	}
 	kabucom := kabuspb.NewKabusServiceClient(conn)
 
+	strategyStore := getStrategyStore(db, logger)
+	orderStore := getOrderStore(db)
+	positionStore := getPositionStore(db)
+
 	return &service{
 		logger:        logger,
 		clock:         newClock(),
-		strategyStore: getStrategyStore(db, logger),
-		orderStore:    getOrderStore(db),
-		positionStore: getPositionStore(db),
+		strategyStore: strategyStore,
+		orderStore:    orderStore,
+		positionStore: positionStore,
 		contractService: newContractService(
 			newKabusAPI(kabucom),
-			getStrategyStore(db, logger),
-			getOrderStore(db),
-			getPositionStore(db)),
+			strategyStore,
+			orderStore,
+			positionStore),
 		rebalanceService: newRebalanceService(
 			newClock(),
 			newKabusAPI(kabucom),
-			getPositionStore(db),
+			positionStore,
 			newOrderService(
 				newClock(),
 				newKabusAPI(kabucom),
-				getStrategyStore(db, logger),
-				getOrderStore(db),
-				getPositionStore(db),
+				strategyStore,
+				orderStore,
+				positionStore,
 				logger)),
 		gridService: newGridService(
 			newClock(),
@@ -57,21 +61,24 @@ func NewService() (IService, error) {
 			newOrderService(
 				newClock(),
 				newKabusAPI(kabucom),
-				getStrategyStore(db, logger),
-				getOrderStore(db),
-				getPositionStore(db),
+				strategyStore,
+				orderStore,
+				positionStore,
 				logger),
-			getStrategyStore(db, logger)),
+			strategyStore),
 		orderService: newOrderService(
 			newClock(),
 			newKabusAPI(kabucom),
-			getStrategyStore(db, logger),
-			getOrderStore(db),
-			getPositionStore(db),
+			strategyStore,
+			orderStore,
+			positionStore,
 			logger),
 		strategyService: newStrategyService(
 			newKabusAPI(kabucom),
-			getStrategyStore(db, logger)),
+			strategyStore),
+		webService: NewWebService(
+			":18083",
+			strategyStore),
 	}, nil
 }
 
@@ -93,6 +100,7 @@ type service struct {
 	gridService        IGridService
 	orderService       IOrderService
 	strategyService    IStrategyService
+	webService         IWebService
 	contractRunning    bool
 	contractRunningMtx sync.Mutex
 	orderRunning       bool
@@ -111,6 +119,10 @@ func (s *service) Start() error {
 		return err
 	}
 
+	// Webサーバ起動
+	go s.startWebServerTask()
+
+	// 戦略情報の中にある銘柄情報の更新
 	go s.updateStrategyTask()
 
 	// 約定確認スケジューラの起動
@@ -118,7 +130,14 @@ func (s *service) Start() error {
 
 	// 注文に関するスケジューラの起動 (リバランス、グリッド、全エグジット)
 	go s.orderScheduler()
+
 	select {}
+}
+
+func (s *service) startWebServerTask() {
+	if err := s.webService.StartWebServer(); err != nil {
+		s.logger.Warning(fmt.Errorf("webサーバがエラーを返しました: %w", err))
+	}
 }
 
 func (s *service) updateStrategyTask() {
