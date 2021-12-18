@@ -1,7 +1,7 @@
 image: golang:1.17
 
 variables:
-  TZ: Asia/Tokyo
+  TZ: JST-9
 
 stages:
   - test
