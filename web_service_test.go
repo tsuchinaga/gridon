@@ -1,11 +1,11 @@
 package gridon
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -47,17 +47,15 @@ func Test_webService_getStrategies(t *testing.T) {
 		{name: "storeがエラーを返したらエラー",
 			strategyStore:  &testStrategyStore{GetStrategies2: ErrUnknown},
 			wantStatusCode: 500,
-			wantBody:       fmt.Sprintf("%s\n", ErrUnknown.Error())},
+			wantBody:       ErrUnknown.Error()},
 		{name: "storeがnilを返したらnullを返す",
 			strategyStore:  &testStrategyStore{GetStrategies1: nil},
 			wantStatusCode: 200,
-			wantBody: `null
-`},
+			wantBody:       `null`},
 		{name: "storeが空配列を返したら空配列を返す",
 			strategyStore:  &testStrategyStore{GetStrategies1: []*Strategy{}},
 			wantStatusCode: 200,
-			wantBody: `[]
-`},
+			wantBody:       `[]`},
 		{name: "storeが戦略の一覧を返したら戦略の一覧を返す",
 			strategyStore: &testStrategyStore{GetStrategies1: []*Strategy{
 				{
@@ -154,8 +152,7 @@ func Test_webService_getStrategies(t *testing.T) {
 				},
 			}},
 			wantStatusCode: 200,
-			wantBody: `[{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}},{"Code":"1458-sell","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"sell","Cash":885680,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}]
-`},
+			wantBody:       `[{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}},{"Code":"1458-sell","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"sell","Cash":885680,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}]`},
 	}
 
 	for _, test := range tests {
@@ -176,7 +173,7 @@ func Test_webService_getStrategies(t *testing.T) {
 			if err != nil {
 				t.Errorf("%s read body error\nerr: %+v\n", t.Name(), err)
 			}
-			strBody := string(body)
+			strBody := strings.Trim(string(body), "\n")
 
 			if !reflect.DeepEqual(test.wantStatusCode, res.StatusCode) ||
 				!reflect.DeepEqual(test.wantBody, strBody) {
