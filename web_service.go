@@ -36,8 +36,12 @@ func (s *webService) StartWebServer() error {
 		return err
 	}
 
-	s.routes["/api/strategies"]["GET"] = http.HandlerFunc(s.getStrategies)
-	s.routes["/api/strategies"]["POST"] = http.HandlerFunc(s.postSaveStrategy)
+	s.routes = map[string]map[string]http.Handler{
+		"/api/strategies": {
+			"GET":  http.HandlerFunc(s.getStrategies),
+			"POST": http.HandlerFunc(s.postSaveStrategy),
+		},
+	}
 
 	return http.Serve(ln, s)
 }
