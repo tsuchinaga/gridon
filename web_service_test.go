@@ -29,10 +29,80 @@ func Test_NewWebService(t *testing.T) {
 	want1 := &webService{
 		port:          ":18083",
 		strategyStore: strategyStore,
+		routes:        map[string]map[string]http.Handler{},
 	}
 	got1 := NewWebService(":18083", strategyStore)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}
+
+func Test_webService_ServeHTTP(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name           string
+		routes         map[string]map[string]http.Handler
+		path           string
+		method         string
+		wantStatusCode int
+		wantBody       string
+	}{
+		{name: "指定したパスがなければ404",
+			path:           "/error",
+			method:         "GET",
+			wantStatusCode: http.StatusNotFound,
+			wantBody:       "404 Not Found"},
+		{name: "指定したルーティングがあっても、メソッドがなければ405",
+			path:           "/",
+			method:         "POST",
+			wantStatusCode: http.StatusMethodNotAllowed,
+			wantBody:       "405 Method Not Allowed"},
+		{name: "指定したルーティングがあって、メソッドもあれば、HandlerFuncが実行される",
+			path:           "/",
+			method:         "GET",
+			wantStatusCode: http.StatusOK,
+			wantBody:       "200 OK"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			service := &webService{}
+			ts := httptest.NewServer(http.HandlerFunc(service.ServeHTTP))
+			defer ts.Close()
+			service.routes = map[string]map[string]http.Handler{
+				"/": {"GET": http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) { _, _ = w.Write([]byte("200 OK")) })},
+			}
+
+			var res *http.Response
+			var err error
+
+			switch test.method {
+			case "GET":
+				res, err = http.Get(ts.URL + test.path)
+			case "POST":
+				res, err = http.Post(ts.URL+test.path, "", nil)
+			}
+			if err != nil {
+				t.Errorf("%s request error\nerr: %+v\n", t.Name(), err)
+			}
+			defer res.Body.Close()
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Errorf("%s read body error\nerr: %+v\n", t.Name(), err)
+			}
+			strBody := strings.Trim(string(body), "\n")
+
+			if !reflect.DeepEqual(test.wantStatusCode, res.StatusCode) ||
+				!reflect.DeepEqual(test.wantBody, strBody) {
+				t.Errorf("%s error\nresult: %v, %v\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(),
+					!reflect.DeepEqual(test.wantStatusCode, res.StatusCode), !reflect.DeepEqual(test.wantBody, strBody),
+					test.wantStatusCode, test.wantBody,
+					res.StatusCode, strBody)
+			}
+		})
 	}
 }
 
@@ -46,7 +116,7 @@ func Test_webService_getStrategies(t *testing.T) {
 	}{
 		{name: "storeがエラーを返したらエラー",
 			strategyStore:  &testStrategyStore{GetStrategies2: ErrUnknown},
-			wantStatusCode: 500,
+			wantStatusCode: http.StatusInternalServerError,
 			wantBody:       ErrUnknown.Error()},
 		{name: "storeがnilを返したらnullを返す",
 			strategyStore:  &testStrategyStore{GetStrategies1: nil},
