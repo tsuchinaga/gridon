@@ -2,6 +2,8 @@ package gridon
 
 import (
 	"encoding/json"
+	"io"
+	"log"
 	"net"
 	"net/http"
 )
@@ -35,6 +37,7 @@ func (s *webService) StartWebServer() error {
 	}
 
 	s.routes["/api/strategies"]["GET"] = http.HandlerFunc(s.getStrategies)
+	s.routes["/api/strategies"]["POST"] = http.HandlerFunc(s.postSaveStrategy)
 
 	return http.Serve(ln, s)
 }
@@ -68,6 +71,32 @@ func (s *webService) getStrategies(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(strategies); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// postSaveStrategy - 戦略の保存
+func (s *webService) postSaveStrategy(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+
+	strategy := &Strategy{}
+	if err := json.NewDecoder(req.Body).Decode(strategy); err != nil && err != io.EOF {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if strategy.Code == "" {
+		http.Error(w, "code is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.strategyStore.Save(strategy); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(strategy); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

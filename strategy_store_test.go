@@ -28,6 +28,9 @@ type testStrategyStore struct {
 	SetContractPrice1       error
 	SetContractPriceHistory []interface{}
 	SetContractPriceCount   int
+	Save1                   error
+	SaveHistory             []interface{}
+	SaveCount               int
 }
 
 func (t *testStrategyStore) GetByCode(string) (*Strategy, error) {
@@ -66,6 +69,11 @@ func (t *testStrategyStore) SetTickGroup(strategyCode string, tickGroup TickGrou
 	t.SetTickGroupHistory = append(t.SetTickGroupHistory, tickGroup)
 	t.SetTickGroupCount++
 	return t.SetTickGroup1
+}
+func (t *testStrategyStore) Save(strategy *Strategy) error {
+	t.SaveHistory = append(t.SaveHistory, strategy)
+	t.SaveCount++
+	return t.Save1
 }
 
 func Test_strategyStore_AddStrategyCash(t *testing.T) {
