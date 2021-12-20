@@ -74,5 +74,5 @@ func (s *rebalanceService) rebalanceQuantity(cash float64, price float64, ownedQ
 
 	v := ownedQuantity * price              // ポジション評価額
 	q := (cash - v) / 2 / price / tradeUnit // 現金と評価額の差 / 2 で中央値との差異を出し、その差異の中でどれだけ売買できるかを計算する
-	return math.Round(q)
+	return math.Round(q) * tradeUnit
 }
