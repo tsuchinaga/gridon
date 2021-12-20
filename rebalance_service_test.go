@@ -65,6 +65,9 @@ func Test_rebalanceService_rebalanceQuantity(t *testing.T) {
 		{name: "arg1 > arg2*arg3 で、差が price*4 - 1 なら、2", arg1: 107_999, arg2: 2_000, arg3: 50, arg4: 1, want1: 2},
 		{name: "arg1 > arg2*arg3 で、差が price*4 なら、2", arg1: 108_000, arg2: 2_000, arg3: 50, arg4: 1, want1: 2},
 		{name: "arg1 > arg2*arg3 で、差が price*4 + 1 なら、2", arg1: 108_001, arg2: 2_000, arg3: 50, arg4: 1, want1: 2},
+		{name: "tradeUnitが10でちょうどで割れる場合", arg1: 100_000, arg2: 200, arg3: 0, arg4: 10, want1: 250},
+		{name: "tradeUnitが10でぎりぎり半分を超えない場合", arg1: 100_000, arg2: 204, arg3: 0, arg4: 10, want1: 250},
+		{name: "tradeUnitが10でぎりぎり半分を超える場合", arg1: 100_000, arg2: 204.3, arg3: 0, arg4: 10, want1: 240},
 	}
 
 	for _, test := range tests {
