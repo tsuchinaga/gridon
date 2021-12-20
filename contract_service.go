@@ -1,6 +1,9 @@
 package gridon
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // newContractService - 新しい約定管理サービスの取得
 func newContractService(kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore) IContractService {
@@ -159,6 +162,11 @@ func (s *contractService) exitContract(order *Order, contract Contract) error {
 	// 注文が拘束しているポジションの更新
 	q := contract.Quantity
 	for i, hp := range order.HoldPositions {
+		// 約定数量がなくなったら抜ける
+		if q <= 0 {
+			break
+		}
+
 		// 拘束残量のないポジションはスキップ
 		lq := hp.LeaveQuantity()
 		if lq <= 0 {
@@ -166,10 +174,7 @@ func (s *contractService) exitContract(order *Order, contract Contract) error {
 		}
 
 		// 拘束ポジションのうち、約定した数量の特定
-		cq := lq
-		if q < lq {
-			cq = q
-		}
+		cq := math.Min(lq, q)
 		q -= cq
 
 		order.HoldPositions[i].ContractQuantity += cq
@@ -178,11 +183,21 @@ func (s *contractService) exitContract(order *Order, contract Contract) error {
 		if err := s.positionStore.ExitContract(hp.PositionCode, cq); err != nil {
 			return err
 		}
-	}
 
-	// 現金余力の更新
-	if err := s.strategyStore.AddStrategyCash(order.StrategyCode, contract.Price*contract.Quantity); err != nil {
-		return err
+		// 現金余力の更新
+		//   エントリー時の約定値 + 損益 を反映する
+		//   買いエントリーの場合: 約定値 x 数量 を加算
+		//   売りエントリーの場合: (エントリー約定値 + エントリー約定値 - エグジット約定値) x 数量 を加算
+		var price float64
+		switch order.Side {
+		case SideSell: // 売りエグジット = 買いエントリー
+			price = contract.Price * cq
+		case SideBuy: // 買いエグジット = 売りエントリー
+			price = (hp.Price + hp.Price - contract.Price) * cq
+		}
+		if err := s.strategyStore.AddStrategyCash(order.StrategyCode, price); err != nil {
+			return err
+		}
 	}
 
 	// 戦略の最終約定情報より新しい約定情報であれば更新
