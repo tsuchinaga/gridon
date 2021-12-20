@@ -49,6 +49,7 @@ type Contract struct {
 // HoldPosition - 拘束ポジション
 type HoldPosition struct {
 	PositionCode     string  // ポジションコード
+	Price            float64 // 拘束したポジションの約定値 = エントリー約定値
 	HoldQuantity     float64 // 拘束した数量
 	ContractQuantity float64 // 約定した数量
 	ReleaseQuantity  float64 // 解放した数量

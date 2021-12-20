@@ -230,7 +230,7 @@ func (s *orderService) ExitAll(strategy *Strategy) error {
 			}
 			return err
 		}
-		order.HoldPositions = append(order.HoldPositions, HoldPosition{PositionCode: p.Code, HoldQuantity: leave})
+		order.HoldPositions = append(order.HoldPositions, HoldPosition{PositionCode: p.Code, Price: p.Price, HoldQuantity: leave})
 	}
 
 	// 注文の送信
@@ -367,7 +367,7 @@ func (s *orderService) holdPositions(strategyCode string, quantity float64, sort
 			}
 			return nil, err
 		}
-		hp = append(hp, HoldPosition{PositionCode: p.Code, HoldQuantity: hq})
+		hp = append(hp, HoldPosition{PositionCode: p.Code, Price: p.Price, HoldQuantity: hq})
 		q -= hq
 
 		// 必要数拘束したところで抜ける
