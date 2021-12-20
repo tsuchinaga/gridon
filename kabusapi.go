@@ -16,7 +16,7 @@ func newKabusAPI(kabucom kabuspb.KabusServiceClient) IKabusAPI {
 // IKabusAPI - kabuステーションAPIのインターフェース
 type IKabusAPI interface {
 	GetSymbol(symbolCode string, exchange Exchange) (*Symbol, error)
-	GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error)
+	GetOrders(product Product, symbolCode string, updateDateTime time.Time) ([]SecurityOrder, error)
 	CancelOrder(orderPassword string, orderCode string) (OrderResult, error)
 	SendOrder(strategy *Strategy, order *Order) (OrderResult, error)
 }
@@ -220,10 +220,11 @@ func (k *kabusAPI) GetSymbol(symbolCode string, exchange Exchange) (*Symbol, err
 }
 
 // GetOrders - 注文一覧の取得
-func (k *kabusAPI) GetOrders(product Product, updateDateTime time.Time) ([]SecurityOrder, error) {
+func (k *kabusAPI) GetOrders(product Product, symbolCode string, updateDateTime time.Time) ([]SecurityOrder, error) {
 	kabusProduct := k.productTo(product)
 	res, err := k.kabucom.GetOrders(context.Background(), &kabuspb.GetOrdersRequest{
 		Product:    kabusProduct,
+		SymbolCode: symbolCode,
 		UpdateTime: timestamppb.New(updateDateTime),
 		GetDetails: true,
 	})

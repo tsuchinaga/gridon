@@ -31,6 +31,16 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 		return ErrNilArgument
 	}
 
+	// 手元にある注文中の注文の一覧を取得
+	//   注文中のデータがなければ約定確認をスキップする
+	orders, err := s.orderStore.GetActiveOrdersByStrategyCode(strategy.Code)
+	if err != nil {
+		return err
+	}
+	if len(orders) < 1 {
+		return nil
+	}
+
 	// kabusapiから最終確認以降に変更された注文の一覧を取得
 	// 約定日時より少し前にキャンセルが入る可能性があるから、1分の猶予を持つようにする
 	updateDatetime := strategy.LastContractDateTime
@@ -38,13 +48,7 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 		updateDatetime.Add(-1 * time.Minute)
 	}
 
-	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, updateDatetime)
-	if err != nil {
-		return err
-	}
-
-	// 手元にある注文中の注文の一覧を取得
-	orders, err := s.orderStore.GetActiveOrdersByStrategyCode(strategy.Code)
+	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.SymbolCode, updateDatetime)
 	if err != nil {
 		return err
 	}
