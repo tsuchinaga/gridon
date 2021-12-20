@@ -48,7 +48,7 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 	// 約定日時より少し前にキャンセルが入る可能性があるから、1分の猶予を持つようにする
 	updateDatetime := strategy.LastContractDateTime
 	if !updateDatetime.IsZero() {
-		updateDatetime.Add(-1 * time.Minute)
+		updateDatetime = updateDatetime.Add(-1 * time.Minute)
 	}
 
 	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.SymbolCode, updateDatetime)
