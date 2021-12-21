@@ -429,3 +429,34 @@ func Test_service_updateStrategyTask(t *testing.T) {
 		})
 	}
 }
+
+func Test_service_startWebServerTask(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name             string
+		webService       *testWebService
+		logger           *testLogger
+		wantWarningCount int
+	}{
+		{name: "webServiceがエラーを返したらログを吐いて終了",
+			webService:       &testWebService{StartWebServer1: ErrUnknown},
+			logger:           &testLogger{},
+			wantWarningCount: 1},
+		{name: "webServiceがエラーを返さなければ何もなく終了",
+			webService:       &testWebService{},
+			logger:           &testLogger{},
+			wantWarningCount: 0},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &service{webService: test.webService, logger: test.logger}
+			service.startWebServerTask()
+			if !reflect.DeepEqual(test.wantWarningCount, test.logger.WarningCount) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.wantWarningCount, test.logger.WarningCount)
+			}
+		})
+	}
+}

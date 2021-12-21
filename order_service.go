@@ -224,20 +224,20 @@ func (s *orderService) ExitAll(strategy *Strategy) error {
 		order.OrderQuantity += leave
 		if err := s.positionStore.Hold(p.Code, leave); err != nil {
 			// 拘束したポジションを解放する
-			// ただし、解放の処理でエラーでたら対応できない
+			// ただし、解放の処理でエラーがでたら対応できない
 			for _, hp := range order.HoldPositions {
 				_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 			}
 			return err
 		}
-		order.HoldPositions = append(order.HoldPositions, HoldPosition{PositionCode: p.Code, HoldQuantity: leave})
+		order.HoldPositions = append(order.HoldPositions, HoldPosition{PositionCode: p.Code, Price: p.Price, HoldQuantity: leave})
 	}
 
 	// 注文の送信
 	res, err := s.kabusAPI.SendOrder(strategy, order)
 	if err != nil {
 		// 拘束したポジションを解放する
-		// ただし、解放の処理でエラーでたら対応できない
+		// ただし、解放の処理でエラーがでたら対応できない
 		for _, hp := range order.HoldPositions {
 			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 		}
@@ -250,7 +250,7 @@ func (s *orderService) ExitAll(strategy *Strategy) error {
 		}
 	} else {
 		// 拘束したポジションを解放する
-		// ただし、解放の処理でエラーでたら対応できない
+		// ただし、解放の処理でエラーがでたら対応できない
 		for _, hp := range order.HoldPositions {
 			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 		}
@@ -361,13 +361,13 @@ func (s *orderService) holdPositions(strategyCode string, quantity float64, sort
 		}
 		if err := s.positionStore.Hold(p.Code, hq); err != nil {
 			// 拘束したポジションを解放する
-			// ただし、解放の処理でエラーでたら対応できない
+			// ただし、解放の処理でエラーがでたら対応できない
 			for _, hp := range hp {
 				_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 			}
 			return nil, err
 		}
-		hp = append(hp, HoldPosition{PositionCode: p.Code, HoldQuantity: hq})
+		hp = append(hp, HoldPosition{PositionCode: p.Code, Price: p.Price, HoldQuantity: hq})
 		q -= hq
 
 		// 必要数拘束したところで抜ける
@@ -379,7 +379,7 @@ func (s *orderService) holdPositions(strategyCode string, quantity float64, sort
 	// 必要数を拘束できないならエラー
 	if q > 0 {
 		// 拘束したポジションを解放する
-		// ただし、解放の処理でエラーでたら対応できない
+		// ただし、解放の処理でエラーがでたら対応できない
 		for _, hp := range hp {
 			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 		}
@@ -398,7 +398,7 @@ func (s *orderService) sendOrder(strategy *Strategy, order *Order) error {
 	res, err := s.kabusAPI.SendOrder(strategy, order)
 	if err != nil {
 		// 拘束したポジションを解放する
-		// ただし、解放の処理でエラーでたら対応できない
+		// ただし、解放の処理でエラーがでたら対応できない
 		for _, hp := range order.HoldPositions {
 			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 		}
@@ -412,7 +412,7 @@ func (s *orderService) sendOrder(strategy *Strategy, order *Order) error {
 		}
 	} else {
 		// 拘束したポジションを解放する
-		// ただし、解放の処理でエラーでたら対応できない
+		// ただし、解放の処理でエラーがでたら対応できない
 		for _, hp := range order.HoldPositions {
 			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 		}
