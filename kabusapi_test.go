@@ -30,9 +30,14 @@ type testKabusAPI struct {
 	SendOrderHistory   []interface{}
 	GetSymbol1         *Symbol
 	GetSymbol2         error
+	GetSymbolCount     int
+	GetSymbolHistory   []interface{}
 }
 
-func (t *testKabusAPI) GetSymbol(string, Exchange) (*Symbol, error) {
+func (t *testKabusAPI) GetSymbol(symbolCode string, exchange Exchange) (*Symbol, error) {
+	t.GetSymbolHistory = append(t.GetSymbolHistory, symbolCode)
+	t.GetSymbolHistory = append(t.GetSymbolHistory, exchange)
+	t.GetSymbolCount++
 	return t.GetSymbol1, t.GetSymbol2
 }
 func (t *testKabusAPI) GetOrders(product Product, symbolCode string, updateDateTime time.Time) ([]SecurityOrder, error) {

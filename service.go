@@ -31,6 +31,7 @@ func NewService() (IService, error) {
 	strategyStore := getStrategyStore(db, logger)
 	orderStore := getOrderStore(db)
 	positionStore := getPositionStore(db)
+	kabusAPI := newKabusAPI(kabucom)
 
 	return &service{
 		logger:        logger,
@@ -39,17 +40,17 @@ func NewService() (IService, error) {
 		orderStore:    orderStore,
 		positionStore: positionStore,
 		contractService: newContractService(
-			newKabusAPI(kabucom),
+			kabusAPI,
 			strategyStore,
 			orderStore,
 			positionStore),
 		rebalanceService: newRebalanceService(
 			newClock(),
-			newKabusAPI(kabucom),
+			kabusAPI,
 			positionStore,
 			newOrderService(
 				newClock(),
-				newKabusAPI(kabucom),
+				kabusAPI,
 				strategyStore,
 				orderStore,
 				positionStore,
@@ -57,10 +58,10 @@ func NewService() (IService, error) {
 		gridService: newGridService(
 			newClock(),
 			newTick(),
-			newKabusAPI(kabucom),
+			kabusAPI,
 			newOrderService(
 				newClock(),
-				newKabusAPI(kabucom),
+				kabusAPI,
 				strategyStore,
 				orderStore,
 				positionStore,
@@ -68,24 +69,24 @@ func NewService() (IService, error) {
 			strategyStore),
 		orderService: newOrderService(
 			newClock(),
-			newKabusAPI(kabucom),
+			kabusAPI,
 			strategyStore,
 			orderStore,
 			positionStore,
 			logger),
 		strategyService: newStrategyService(
-			newKabusAPI(kabucom),
+			kabusAPI,
 			strategyStore),
 		webService: NewWebService(
 			":18083",
-			strategyStore),
+			strategyStore,
+			kabusAPI),
 	}, nil
 }
 
 // IService - gridonサービスのインターフェース
 type IService interface {
 	Start() error
-	SaveStrategy(strategy *Strategy) error
 }
 
 // service - gridonサービス
@@ -290,9 +291,4 @@ func (s *service) orderTask() {
 		}()
 	}
 	wg.Wait()
-}
-
-// SaveStrategy - 戦略の保存
-func (s *service) SaveStrategy(strategy *Strategy) error {
-	return s.strategyStore.Save(strategy)
 }

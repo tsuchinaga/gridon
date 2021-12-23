@@ -26,12 +26,14 @@ func (t *testWebService) StartWebServer() error {
 func Test_NewWebService(t *testing.T) {
 	t.Parallel()
 	strategyStore := &testStrategyStore{}
+	kabusAPI := &testKabusAPI{}
 	want1 := &webService{
 		port:          ":18083",
 		strategyStore: strategyStore,
+		kabusAPI:      kabusAPI,
 		routes:        map[string]map[string]http.Handler{},
 	}
-	got1 := NewWebService(":18083", strategyStore)
+	got1 := NewWebService(":18083", strategyStore, kabusAPI)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
@@ -261,26 +263,45 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 	tests := []struct {
 		name                    string
 		strategyStore           *testStrategyStore
+		kabusAPI                *testKabusAPI
 		body                    string
 		wantStatusCode          int
 		wantBody                string
+		wantGetSymbolHistory    []interface{}
 		wantSaveStrategyHistory []interface{}
 	}{
 		{name: "bodyがjson形式でなければエラー",
 			strategyStore:  &testStrategyStore{},
+			kabusAPI:       &testKabusAPI{},
 			body:           `a`,
 			wantStatusCode: http.StatusBadRequest,
 			wantBody:       `invalid character 'a' looking for beginning of value`},
 		{name: "bodyにcodeがなければエラー",
 			strategyStore:  &testStrategyStore{},
+			kabusAPI:       &testKabusAPI{},
 			body:           `{}`,
 			wantStatusCode: http.StatusBadRequest,
 			wantBody:       `code is required`},
+		{name: "bodyにcodeがなければエラー",
+			strategyStore:  &testStrategyStore{},
+			kabusAPI:       &testKabusAPI{},
+			body:           `{}`,
+			wantStatusCode: http.StatusBadRequest,
+			wantBody:       `code is required`},
+		{name: "銘柄情報取得に失敗したらエラー",
+			strategyStore:        &testStrategyStore{},
+			kabusAPI:             &testKabusAPI{GetSymbol2: ErrUnknown},
+			body:                 `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantStatusCode:       http.StatusInternalServerError,
+			wantBody:             `unknown`,
+			wantGetSymbolHistory: []interface{}{"1458", ExchangeToushou}},
 		{name: "saveに失敗したらエラー",
-			strategyStore:  &testStrategyStore{Save1: ErrUnknown},
-			body:           `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
-			wantStatusCode: http.StatusInternalServerError,
-			wantBody:       `unknown`,
+			strategyStore:        &testStrategyStore{Save1: ErrUnknown},
+			kabusAPI:             &testKabusAPI{GetSymbol1: &Symbol{Code: "1458", Exchange: ExchangeToushou, TradingUnit: 1, TickGroup: TickGroupTopix100}},
+			body:                 `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantStatusCode:       http.StatusInternalServerError,
+			wantBody:             `unknown`,
+			wantGetSymbolHistory: []interface{}{"1458", ExchangeToushou},
 			wantSaveStrategyHistory: []interface{}{&Strategy{
 				Code:                 "1458-buy",
 				SymbolCode:           "1458",
@@ -328,10 +349,12 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 				Account: Account{Password: "Password1234", AccountType: AccountTypeSpecific},
 			}}},
 		{name: "saveに成功したら保存したstrategyを返す",
-			strategyStore:  &testStrategyStore{},
-			body:           `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
-			wantStatusCode: http.StatusOK,
-			wantBody:       `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			strategyStore:        &testStrategyStore{},
+			kabusAPI:             &testKabusAPI{GetSymbol1: &Symbol{Code: "1458", Exchange: ExchangeToushou, TradingUnit: 1, TickGroup: TickGroupTopix100}},
+			body:                 `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantStatusCode:       http.StatusOK,
+			wantBody:             `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}]},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantGetSymbolHistory: []interface{}{"1458", ExchangeToushou},
 			wantSaveStrategyHistory: []interface{}{&Strategy{
 				Code:                 "1458-buy",
 				SymbolCode:           "1458",
@@ -379,10 +402,12 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 				Account: Account{Password: "Password1234", AccountType: AccountTypeSpecific},
 			}}},
 		{name: "rebalance戦略のsaveに成功したら保存したstrategyを返す",
-			strategyStore:  &testStrategyStore{},
-			body:           `{"Code":"1475-rebalance","SymbolCode":"1475","Exchange":"toushou","Product":"stock","EntrySide":"buy","Cash":75056,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
-			wantStatusCode: http.StatusOK,
-			wantBody:       `{"Code":"1475-rebalance","SymbolCode":"1475","Exchange":"toushou","Product":"stock","MarginTradeType":"","EntrySide":"buy","Cash":75056,"BasePrice":0,"BasePriceDateTime":"0001-01-01T00:00:00Z","LastContractPrice":0,"LastContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":false,"Width":0,"Quantity":0,"NumberOfGrids":0,"TimeRanges":null},"CancelStrategy":{"Runnable":false,"Timings":null},"ExitStrategy":{"Runnable":false,"Conditions":null},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			strategyStore:        &testStrategyStore{},
+			kabusAPI:             &testKabusAPI{GetSymbol1: &Symbol{Code: "1458", Exchange: ExchangeToushou, TradingUnit: 1, TickGroup: TickGroupOther}},
+			body:                 `{"Code":"1475-rebalance","SymbolCode":"1475","Exchange":"toushou","Product":"stock","EntrySide":"buy","Cash":75056,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantStatusCode:       http.StatusOK,
+			wantBody:             `{"Code":"1475-rebalance","SymbolCode":"1475","Exchange":"toushou","Product":"stock","MarginTradeType":"","EntrySide":"buy","Cash":75056,"BasePrice":0,"BasePriceDateTime":"0001-01-01T00:00:00Z","LastContractPrice":0,"LastContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"other","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":false,"Width":0,"Quantity":0,"NumberOfGrids":0,"TimeRanges":null},"CancelStrategy":{"Runnable":false,"Timings":null},"ExitStrategy":{"Runnable":false,"Conditions":null},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantGetSymbolHistory: []interface{}{"1475", ExchangeToushou},
 			wantSaveStrategyHistory: []interface{}{&Strategy{
 				Code:       "1475-rebalance",
 				SymbolCode: "1475",
@@ -390,6 +415,7 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 				Product:    ProductStock,
 				EntrySide:  SideBuy,
 				Cash:       75_056,
+				TickGroup:  TickGroupOther,
 				RebalanceStrategy: RebalanceStrategy{
 					Runnable: true,
 					Timings: []time.Time{
@@ -406,7 +432,7 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			service := &webService{strategyStore: test.strategyStore}
+			service := &webService{strategyStore: test.strategyStore, kabusAPI: test.kabusAPI}
 			ts := httptest.NewServer(http.HandlerFunc(service.postSaveStrategy))
 			defer ts.Close()
 
@@ -423,13 +449,15 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 
 			if !reflect.DeepEqual(test.wantStatusCode, res.StatusCode) ||
 				!reflect.DeepEqual(test.wantBody, strBody) ||
+				!reflect.DeepEqual(test.wantGetSymbolHistory, test.kabusAPI.GetSymbolHistory) ||
 				!reflect.DeepEqual(test.wantSaveStrategyHistory, test.strategyStore.SaveHistory) {
-				t.Errorf("%s error\nresult: %v, %v, %v\nwant: %+v, %+v, %v\ngot: %+v, %+v, %v\n", t.Name(),
+				t.Errorf("%s error\nresult: %v, %v, %v, %v\nwant: %v, %+v, %+v, %v\ngot: %v, %+v, %+v, %v\n", t.Name(),
 					!reflect.DeepEqual(test.wantStatusCode, res.StatusCode),
 					!reflect.DeepEqual(test.wantBody, strBody),
+					!reflect.DeepEqual(test.wantGetSymbolHistory, test.kabusAPI.GetSymbolHistory),
 					!reflect.DeepEqual(test.wantSaveStrategyHistory, test.strategyStore.SaveHistory),
-					test.wantStatusCode, test.wantBody, test.wantSaveStrategyHistory,
-					res.StatusCode, strBody, test.strategyStore.SaveHistory)
+					test.wantStatusCode, test.wantBody, test.wantGetSymbolHistory, test.wantSaveStrategyHistory,
+					res.StatusCode, strBody, test.kabusAPI.GetSymbolHistory, test.strategyStore.SaveHistory)
 			}
 		})
 	}
