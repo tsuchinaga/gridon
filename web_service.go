@@ -9,10 +9,11 @@ import (
 )
 
 // NewWebService - 新しいWebサービスの取得
-func NewWebService(port string, strategyStore IStrategyStore) IWebService {
+func NewWebService(port string, strategyStore IStrategyStore, kabusAPI IKabusAPI) IWebService {
 	return &webService{
 		port:          port,
 		strategyStore: strategyStore,
+		kabusAPI:      kabusAPI,
 		routes:        map[string]map[string]http.Handler{},
 	}
 }
@@ -26,6 +27,7 @@ type IWebService interface {
 type webService struct {
 	port          string
 	strategyStore IStrategyStore
+	kabusAPI      IKabusAPI
 	routes        map[string]map[string]http.Handler
 }
 
@@ -94,6 +96,14 @@ func (s *webService) postSaveStrategy(w http.ResponseWriter, req *http.Request) 
 		http.Error(w, "code is required", http.StatusBadRequest)
 		return
 	}
+
+	// TICKグループのセット
+	symbol, err := s.kabusAPI.GetSymbol(strategy.SymbolCode, strategy.Exchange)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	strategy.TickGroup = symbol.TickGroup
 
 	if err := s.strategyStore.Save(strategy); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
