@@ -87,7 +87,6 @@ func NewService() (IService, error) {
 // IService - gridonサービスのインターフェース
 type IService interface {
 	Start() error
-	SaveStrategy(strategy *Strategy) error
 }
 
 // service - gridonサービス
@@ -292,9 +291,4 @@ func (s *service) orderTask() {
 		}()
 	}
 	wg.Wait()
-}
-
-// SaveStrategy - 戦略の保存
-func (s *service) SaveStrategy(strategy *Strategy) error {
-	return s.strategyStore.Save(strategy)
 }
