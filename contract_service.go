@@ -81,6 +81,13 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 						return err
 					}
 				}
+
+				// 戦略の最終約定情報より新しい約定情報であれば更新
+				if strategy.LastContractDateTime.Before(c.ContractDateTime) {
+					if err := s.strategyStore.SetContractPrice(o.StrategyCode, c.Price, c.ContractDateTime); err != nil {
+						return err
+					}
+				}
 			}
 
 			// エグジット注文が取消されたら拘束していたポジションを解放する
@@ -107,13 +114,8 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 		return ErrNilArgument
 	}
 
-	strategy, err := s.strategyStore.GetByCode(order.StrategyCode)
-	if err != nil {
-		return err
-	}
-
 	// ポジションの登録
-	err = s.positionStore.Save(&Position{
+	err := s.positionStore.Save(&Position{
 		Code:             contract.PositionCode,
 		StrategyCode:     order.StrategyCode,
 		OrderCode:        order.Code,
@@ -136,13 +138,6 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 		return err
 	}
 
-	// 戦略の最終約定情報より新しい約定情報であれば更新
-	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -152,11 +147,6 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 func (s *contractService) exitContract(order *Order, contract Contract) error {
 	if order == nil {
 		return ErrNilArgument
-	}
-
-	strategy, err := s.strategyStore.GetByCode(order.StrategyCode)
-	if err != nil {
-		return err
 	}
 
 	// 注文が拘束しているポジションの更新
@@ -200,12 +190,6 @@ func (s *contractService) exitContract(order *Order, contract Contract) error {
 		}
 	}
 
-	// 戦略の最終約定情報より新しい約定情報であれば更新
-	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
