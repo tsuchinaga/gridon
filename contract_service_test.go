@@ -1075,3 +1075,323 @@ func Test_newContractService(t *testing.T) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
 }
+
+func Test_contractService_updateContractPrice(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                           string
+		strategyStore                  *testStrategyStore
+		arg1                           *Strategy
+		arg2                           float64
+		arg3                           time.Time
+		want1                          error
+		wantSetContractPriceHistory    []interface{}
+		wantSetMaxContractPriceHistory []interface{}
+		wantSetMinContractPriceHistory []interface{}
+	}{
+		{name: "引数がnilならエラー",
+			strategyStore: &testStrategyStore{},
+			arg1:          nil,
+			arg2:          2000,
+			arg3:          time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:         ErrNilArgument},
+		{name: "最終約定日時以前の約定情報なら何もしない",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local)},
+			arg2:  2000,
+			arg3:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1: nil},
+		{name: "最終約定日時以降の約定情報なら何もしない約定情報を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    1999,
+				LastContractDateTime: time.Date(2021, 12, 24, 13, 59, 0, 0, time.Local)},
+			arg2:                        2000,
+			arg3:                        time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                       nil,
+			wantSetContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "約定情報更新でエラーがでたらエラーを返す",
+			strategyStore: &testStrategyStore{SetContractPrice1: ErrUnknown},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    1999,
+				LastContractDateTime: time.Date(2021, 12, 24, 13, 59, 0, 0, time.Local)},
+			arg2:                        2000,
+			arg3:                        time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                       ErrUnknown,
+			wantSetContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "実行可能なグリッド戦略がなければ最小最大は更新しない",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: false}},
+			arg2:  2000,
+			arg3:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1: nil},
+		{name: "最大約定日時が前日なら、保持している最大約定日時よりも安くても最大約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 23, 12, 30, 0, 0, time.Local),
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMaxContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最大約定日時が当日でも違うグリッド期間なら、保持している最大約定日時よりも安くても最大約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 11, 0, 0, 0, time.Local),
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMaxContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最大約定日時が当日で同じグリッド期間で、さらに最大約定日時がゼロ値なら、最大約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     0,
+				MaxContractDateTime:  time.Time{},
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMaxContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最大約定日時が当日で同じグリッド期間で、さらに最大約定値より約定値が高ければ、最大約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     1998,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 13, 0, 0, 0, time.Local),
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMaxContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最大約定日時が当日で同じグリッド期間でも、最大約定値より約定値が安ければ、更新しない",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2002,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 13, 0, 0, 0, time.Local),
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:  2000,
+			arg3:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1: nil},
+		{name: "最大約定を更新でエラーが出たらエラーを返す",
+			strategyStore: &testStrategyStore{SetMaxContractPrice1: ErrUnknown},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     1998,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 13, 0, 0, 0, time.Local),
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          ErrUnknown,
+			wantSetMaxContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最小約定日時が前日なら、保持している最小約定日時よりも高くても最小約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 23, 12, 30, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMinContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最小約定日時が当日でも違うグリッド期間なら、保持している最小約定日時よりも高くても最小約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				MinContractPrice:     1900,
+				MinContractDateTime:  time.Date(2021, 12, 24, 11, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMinContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最小約定日時が当日で同じグリッド期間で、さらに最小約定日時がゼロ値なら、最小約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				MinContractPrice:     0,
+				MinContractDateTime:  time.Time{},
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMinContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最小約定日時が当日で同じグリッド期間で、さらに最小約定値より約定値が高ければ、最小約定を更新する",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				MinContractPrice:     2002,
+				MinContractDateTime:  time.Date(2021, 12, 24, 13, 59, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          nil,
+			wantSetMinContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+		{name: "最小約定日時が当日で同じグリッド期間でも、最小約定値より約定値が安ければ、更新しない",
+			strategyStore: &testStrategyStore{},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				MinContractPrice:     1998,
+				MinContractDateTime:  time.Date(2021, 12, 24, 13, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:  2000,
+			arg3:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1: nil},
+		{name: "最小約定を更新でエラーが出たらエラーを返す",
+			strategyStore: &testStrategyStore{SetMinContractPrice1: ErrUnknown},
+			arg1: &Strategy{
+				Code:                 "strategy-code-001",
+				LastContractPrice:    2000,
+				LastContractDateTime: time.Date(2021, 12, 24, 14, 1, 0, 0, time.Local),
+				MaxContractPrice:     2100,
+				MaxContractDateTime:  time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+				MinContractPrice:     2002,
+				MinContractDateTime:  time.Date(2021, 12, 24, 13, 0, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					}}},
+			arg2:                           2000,
+			arg3:                           time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local),
+			want1:                          ErrUnknown,
+			wantSetMinContractPriceHistory: []interface{}{"strategy-code-001", 2000.0, time.Date(2021, 12, 24, 14, 0, 0, 0, time.Local)}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &contractService{strategyStore: test.strategyStore}
+			got1 := service.updateContractPrice(test.arg1, test.arg2, test.arg3)
+			if !reflect.DeepEqual(test.want1, got1) ||
+				!reflect.DeepEqual(test.wantSetContractPriceHistory, test.strategyStore.SetContractPriceHistory) ||
+				!reflect.DeepEqual(test.wantSetMaxContractPriceHistory, test.strategyStore.SetMaxContractPriceHistory) ||
+				!reflect.DeepEqual(test.wantSetMinContractPriceHistory, test.strategyStore.SetMinContractPriceHistory) {
+				t.Errorf("%s error\nresult: %+v, %+v, %+v, %+v\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
+					!reflect.DeepEqual(test.want1, got1),
+					!reflect.DeepEqual(test.wantSetContractPriceHistory, test.strategyStore.SetContractPriceHistory),
+					!reflect.DeepEqual(test.wantSetMaxContractPriceHistory, test.strategyStore.SetMaxContractPriceHistory),
+					!reflect.DeepEqual(test.wantSetMinContractPriceHistory, test.strategyStore.SetMinContractPriceHistory),
+					test.want1, test.wantSetContractPriceHistory, test.wantSetMaxContractPriceHistory, test.wantSetMinContractPriceHistory,
+					got1, test.strategyStore.SetContractPriceHistory, test.strategyStore.SetMaxContractPriceHistory, test.strategyStore.SetMinContractPriceHistory)
+			}
+		})
+	}
+}
