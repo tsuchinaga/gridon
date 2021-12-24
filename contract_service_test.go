@@ -336,6 +336,31 @@ func Test_contractService_exitContract(t *testing.T) {
 					{PositionCode: "position-code-003", HoldQuantity: 100, ReleaseQuantity: 100, Price: 2090},
 					{PositionCode: "position-code-004", HoldQuantity: 100, Price: 2080, ContractQuantity: 50},
 				}}},
+		{name: "少量の約定時は全てのポジションをループすることなく必要最低限のチェックでループを抜けて処理を進められる",
+			positionStore: &testPositionStore{},
+			strategyStore: &testStrategyStore{GetByCode1: &Strategy{}},
+			arg1: &Order{
+				StrategyCode: "strategy-code-001",
+				Side:         SideSell,
+				HoldPositions: []HoldPosition{
+					{PositionCode: "position-code-001", HoldQuantity: 100, ContractQuantity: 80, Price: 2110},
+					{PositionCode: "position-code-002", HoldQuantity: 100, ReleaseQuantity: 70, Price: 2100},
+					{PositionCode: "position-code-003", HoldQuantity: 100, ReleaseQuantity: 100, Price: 2090},
+					{PositionCode: "position-code-004", HoldQuantity: 100, Price: 2080},
+				}},
+			arg2:                       Contract{Price: 2070, Quantity: 10, ContractDateTime: time.Date(2021, 9, 29, 10, 0, 0, 0, time.Local)},
+			want1:                      nil,
+			wantExitContractHistory:    []interface{}{"position-code-001", 10.0},
+			wantAddStrategyCashHistory: []interface{}{"strategy-code-001", 2070 * 10.0},
+			wantOrder: &Order{
+				StrategyCode: "strategy-code-001",
+				Side:         SideSell,
+				HoldPositions: []HoldPosition{
+					{PositionCode: "position-code-001", HoldQuantity: 100, ContractQuantity: 90, Price: 2110},
+					{PositionCode: "position-code-002", HoldQuantity: 100, ReleaseQuantity: 70, Price: 2100},
+					{PositionCode: "position-code-003", HoldQuantity: 100, ReleaseQuantity: 100, Price: 2090},
+					{PositionCode: "position-code-004", HoldQuantity: 100, Price: 2080},
+				}}},
 	}
 
 	for _, test := range tests {
