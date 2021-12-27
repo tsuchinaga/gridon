@@ -44,6 +44,7 @@ func newTick() ITick {
 type ITick interface {
 	GetTick(tickGroup TickGroup, price float64) float64
 	TickAddedPrice(tickGroup TickGroup, price float64, tick int) float64
+	Ticks(tickGroup TickGroup, a float64, b float64) int
 }
 
 // tick - ティック計算

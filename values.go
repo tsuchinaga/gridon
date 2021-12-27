@@ -107,8 +107,8 @@ type DynamicGridMinMax struct {
 }
 
 // Width - 計算後グリッド幅
-func (v *DynamicGridMinMax) Width(width, diff float64) float64 {
-	return v.Operation.Calc(width, v.Rounding.Calc(diff*v.Rate))
+func (v *DynamicGridMinMax) Width(width int, diff int) int {
+	return int(v.Operation.Calc(float64(width), v.Rounding.Calc(float64(diff)*v.Rate)))
 }
 
 // RebalanceStrategy - リバランス戦略

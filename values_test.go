@@ -446,9 +446,9 @@ func Test_DynamicGridMinMax_Width(t *testing.T) {
 	tests := []struct {
 		name              string
 		dynamicGridMinMax DynamicGridMinMax
-		arg1              float64
-		arg2              float64
-		want1             float64
+		arg1              int
+		arg2              int
+		want1             int
 	}{
 		{name: "rateが0で加算ならwidthが返される",
 			dynamicGridMinMax: DynamicGridMinMax{

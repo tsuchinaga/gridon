@@ -328,6 +328,18 @@ func Test_gridService_Leveling(t *testing.T) {
 					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
 					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1: ErrUnknown},
+		{name: "widthが0ならエラー",
+			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			orderService:  &testOrderService{GetActiveOrdersByStrategyCode1: []*Order{}},
+			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
+			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
+				Runnable: true,
+				TimeRanges: []TimeRange{{
+					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+			want1: ErrZeroGridWidth},
 		{name: "グリッドの範囲外の注文の取消で失敗したらエラー",
 			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
 			orderService: &testOrderService{
@@ -666,5 +678,67 @@ func Test_newGridService(t *testing.T) {
 	got1 := newGridService(clock, tick, kabusAPI, orderService, strategyStore)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}
+
+func Test_gridService_width(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		arg1  *Strategy
+		want1 int
+		want2 error
+	}{
+		{name: "引数がnilならエラー",
+			arg1:  nil,
+			want1: 0,
+			want2: ErrNilArgument},
+		{name: "typeがunspecifiedならwidthをそのまま返す",
+			arg1: &Strategy{
+				GridStrategy: GridStrategy{
+					Width:    2,
+					GridType: GridTypeUnspecified,
+				},
+			},
+			want1: 2,
+			want2: nil},
+		{name: "typeがstaticならwidthをそのまま返す",
+			arg1: &Strategy{
+				GridStrategy: GridStrategy{
+					Width:    2,
+					GridType: GridTypeStatic,
+				},
+			},
+			want1: 2,
+			want2: nil},
+		{name: "typeがDynamicMinMaxならwidthを計算して返す",
+			arg1: &Strategy{
+				TickGroup:        TickGroupTopix100,
+				MinContractPrice: 18125,
+				MaxContractPrice: 18275,
+				GridStrategy: GridStrategy{
+					Width:    2,
+					GridType: GridTypeDynamicMinMax,
+					DynamicGridMinMax: DynamicGridMinMax{
+						Rate:      0.2,
+						Rounding:  RoundingCeil,
+						Operation: OperationPlus,
+					},
+				},
+			},
+			want1: 8,
+			want2: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &gridService{tick: &tick{}}
+			got1, got2 := service.width(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
+			}
+		})
 	}
 }
