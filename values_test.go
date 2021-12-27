@@ -440,3 +440,80 @@ func Test_ExitStrategy_ExecutionType(t *testing.T) {
 		})
 	}
 }
+
+func Test_DynamicGridMinMax_Width(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name              string
+		dynamicGridMinMax DynamicGridMinMax
+		arg1              float64
+		arg2              float64
+		want1             float64
+	}{
+		{name: "rateが0で加算ならwidthが返される",
+			dynamicGridMinMax: DynamicGridMinMax{
+				Rate:      0,
+				Rounding:  RoundingFloor,
+				Operation: OperationPlus,
+			},
+			arg1:  2,
+			arg2:  10,
+			want1: 2},
+		{name: "rateが1で加算ならwidth + diffが返される",
+			dynamicGridMinMax: DynamicGridMinMax{
+				Rate:      1,
+				Rounding:  RoundingFloor,
+				Operation: OperationPlus,
+			},
+			arg1:  2,
+			arg2:  10,
+			want1: 12},
+		{name: "rateが0.5で加算ならwidth + diff / 2が返される",
+			dynamicGridMinMax: DynamicGridMinMax{
+				Rate:      0.5,
+				Rounding:  RoundingFloor,
+				Operation: OperationPlus,
+			},
+			arg1:  2,
+			arg2:  10,
+			want1: 7},
+		{name: "rateが0で積算なら0が返される",
+			dynamicGridMinMax: DynamicGridMinMax{
+				Rate:      0,
+				Rounding:  RoundingFloor,
+				Operation: OperationMultiple,
+			},
+			arg1:  2,
+			arg2:  10,
+			want1: 0},
+		{name: "rateが1で積算ならwidth x diffが返される",
+			dynamicGridMinMax: DynamicGridMinMax{
+				Rate:      1,
+				Rounding:  RoundingFloor,
+				Operation: OperationMultiple,
+			},
+			arg1:  2,
+			arg2:  10,
+			want1: 20},
+		{name: "rateが0.5で積算ならwidth x diff / 2が返される",
+			dynamicGridMinMax: DynamicGridMinMax{
+				Rate:      0.5,
+				Rounding:  RoundingFloor,
+				Operation: OperationMultiple,
+			},
+			arg1:  2,
+			arg2:  10,
+			want1: 10},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.dynamicGridMinMax.Width(test.arg1, test.arg2)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
