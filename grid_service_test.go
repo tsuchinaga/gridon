@@ -720,7 +720,7 @@ func Test_gridService_width(t *testing.T) {
 					Width:    2,
 					GridType: GridTypeDynamicMinMax,
 					DynamicGridMinMax: DynamicGridMinMax{
-						Rate:      0.2,
+						Divide:    5,
 						Rounding:  RoundingCeil,
 						Operation: OperationPlus,
 					},

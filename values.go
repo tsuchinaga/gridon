@@ -101,14 +101,18 @@ func (v *GridStrategy) IsRunnable(now time.Time) bool {
 
 // DynamicGridMinMax - 最小・最大約定値からの動的グリッド
 type DynamicGridMinMax struct {
-	Rate      float64   // 最低・最大の差をどのくらい基準幅に加算するか。1ならそのまま、0.2なら差の1/5を加算
+	Divide    float64   // 最低・最大の差をDivideで割った値を加算する。1ならそのまま、5なら差の1/5を加算
 	Rounding  Rounding  // 端数処理
 	Operation Operation // 演算子
 }
 
 // Width - 計算後グリッド幅
 func (v *DynamicGridMinMax) Width(width int, diff int) int {
-	return int(v.Operation.Calc(float64(width), v.Rounding.Calc(float64(diff)*v.Rate)))
+	if v.Divide == 0 {
+		return width
+	}
+
+	return int(v.Operation.Calc(float64(width), v.Rounding.Calc(float64(diff)/v.Divide)))
 }
 
 // RebalanceStrategy - リバランス戦略
