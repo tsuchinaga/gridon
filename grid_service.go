@@ -49,11 +49,17 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 		return err
 	}
 
+	// グリッド幅の計算
+	width, _ := s.width(strategy) // 直前にstrategyのnilチェックをしているので、ここではエラーを無視できる
+	if width <= 0 {
+		return ErrZeroGridWidth
+	}
+
 	// 乗せるべきgridのリストを作っておく
 	grids := []float64{basePrice} // 基準価格も有効なグリッドなので追加しておく
 	for i := 1; i <= strategy.GridStrategy.NumberOfGrids; i++ {
-		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, i*strategy.GridStrategy.Width))
-		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*i*strategy.GridStrategy.Width))
+		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, i*width))
+		grids = append(grids, s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*i*width))
 	}
 
 	// 基準価格から最大グリッド数より外にある注文を特定して取り消す
@@ -85,7 +91,7 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 	for i := 1; i <= strategy.GridStrategy.NumberOfGrids; i++ {
 		// upper
 		{
-			upper := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, i*strategy.GridStrategy.Width)
+			upper := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, i*width)
 			quantity := strategy.GridStrategy.Quantity - gridQuantities[upper]
 			// 部分約定対策として、基準価格の隣の場合に限り基準価格に乗っている数量を減算する
 			if i == 1 {
@@ -102,7 +108,7 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 
 		// lower
 		{
-			lower := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*i*strategy.GridStrategy.Width)
+			lower := s.tick.TickAddedPrice(strategy.TickGroup, basePrice, -1*i*width)
 			quantity := strategy.GridStrategy.Quantity - gridQuantities[lower]
 			// 部分約定対策として、基準価格の隣の場合に限り基準価格に乗っている数量を減算する
 			if i == 1 {
@@ -182,4 +188,23 @@ func (s *gridService) sendGridOrder(strategy *Strategy, limitPrice float64, base
 		}
 	}
 	return nil
+}
+
+// width - グリッド戦略のWidthの取得
+func (s *gridService) width(strategy *Strategy) (int, error) {
+	if strategy == nil {
+		return 0, ErrNilArgument
+	}
+
+	switch strategy.GridStrategy.GridType {
+	case GridTypeStatic:
+		return strategy.GridStrategy.Width, nil
+	case GridTypeDynamicMinMax:
+		return strategy.GridStrategy.DynamicGridMinMax.Width(
+				strategy.GridStrategy.Width,
+				s.tick.Ticks(strategy.TickGroup, strategy.MinContractPrice, strategy.MaxContractPrice)),
+			nil
+	default:
+		return strategy.GridStrategy.Width, nil
+	}
 }

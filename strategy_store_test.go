@@ -9,28 +9,34 @@ import (
 
 type testStrategyStore struct {
 	IStrategyStore
-	AddStrategyCash1        error
-	AddStrategyCashHistory  []interface{}
-	AddStrategyCashCount    int
-	SetBasePrice1           error
-	SetBasePriceHistory     []interface{}
-	SetBasePriceCount       int
-	GetByCode1              *Strategy
-	GetByCode2              error
-	GetStrategies1          []*Strategy
-	GetStrategies2          error
-	GetStrategiesCount      int
-	DeployFromDB1           error
-	DeployFromDBCount       int
-	SetTickGroup1           error
-	SetTickGroupCount       int
-	SetTickGroupHistory     []interface{}
-	SetContractPrice1       error
-	SetContractPriceHistory []interface{}
-	SetContractPriceCount   int
-	Save1                   error
-	SaveHistory             []interface{}
-	SaveCount               int
+	AddStrategyCash1           error
+	AddStrategyCashHistory     []interface{}
+	AddStrategyCashCount       int
+	SetBasePrice1              error
+	SetBasePriceHistory        []interface{}
+	SetBasePriceCount          int
+	GetByCode1                 *Strategy
+	GetByCode2                 error
+	GetStrategies1             []*Strategy
+	GetStrategies2             error
+	GetStrategiesCount         int
+	DeployFromDB1              error
+	DeployFromDBCount          int
+	SetTickGroup1              error
+	SetTickGroupCount          int
+	SetTickGroupHistory        []interface{}
+	SetContractPrice1          error
+	SetContractPriceHistory    []interface{}
+	SetContractPriceCount      int
+	SetMaxContractPrice1       error
+	SetMaxContractPriceHistory []interface{}
+	SetMaxContractPriceCount   int
+	SetMinContractPrice1       error
+	SetMinContractPriceHistory []interface{}
+	SetMinContractPriceCount   int
+	Save1                      error
+	SaveHistory                []interface{}
+	SaveCount                  int
 }
 
 func (t *testStrategyStore) GetByCode(string) (*Strategy, error) {
@@ -55,6 +61,20 @@ func (t *testStrategyStore) SetContractPrice(strategyCode string, contractPrice 
 	t.SetContractPriceHistory = append(t.SetContractPriceHistory, contractDateTime)
 	t.SetContractPriceCount++
 	return t.SetContractPrice1
+}
+func (t *testStrategyStore) SetMaxContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
+	t.SetMaxContractPriceHistory = append(t.SetMaxContractPriceHistory, strategyCode)
+	t.SetMaxContractPriceHistory = append(t.SetMaxContractPriceHistory, contractPrice)
+	t.SetMaxContractPriceHistory = append(t.SetMaxContractPriceHistory, contractDateTime)
+	t.SetMaxContractPriceCount++
+	return t.SetMaxContractPrice1
+}
+func (t *testStrategyStore) SetMinContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
+	t.SetMinContractPriceHistory = append(t.SetMinContractPriceHistory, strategyCode)
+	t.SetMinContractPriceHistory = append(t.SetMinContractPriceHistory, contractPrice)
+	t.SetMinContractPriceHistory = append(t.SetMinContractPriceHistory, contractDateTime)
+	t.SetMinContractPriceCount++
+	return t.SetMinContractPrice1
 }
 func (t *testStrategyStore) GetStrategies() ([]*Strategy, error) {
 	t.GetStrategiesCount++
@@ -544,6 +564,136 @@ func Test_strategyStore_SetContractPrice(t *testing.T) {
 			t.Parallel()
 			store := &strategyStore{store: test.store, db: test.db}
 			got1 := store.SetContractPrice(test.arg1, test.arg2, test.arg3)
+
+			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantStrategySaveCount, test.db.SaveStrategyCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantStrategySaveCount,
+					got1, store.store, test.db.SaveStrategyCount)
+			}
+		})
+	}
+}
+
+func Test_strategyStore_SetMaxContractPrice(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                  string
+		db                    *testDB
+		store                 map[string]*Strategy
+		arg1                  string
+		arg2                  float64
+		arg3                  time.Time
+		want1                 error
+		wantStore             map[string]*Strategy
+		wantStrategySaveCount int
+	}{
+		{name: "該当する戦略がなければ変更なし",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "",
+			arg2:  10_000,
+			arg3:  time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local),
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			wantStrategySaveCount: 0},
+		{name: "該当する戦略があれば更新する",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "strategy-code-002",
+			arg2:  10_000,
+			arg3:  time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local),
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002", MaxContractPrice: 10_000, MaxContractDateTime: time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local)},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			wantStrategySaveCount: 1},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &strategyStore{store: test.store, db: test.db}
+			got1 := store.SetMaxContractPrice(test.arg1, test.arg2, test.arg3)
+
+			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
+
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantStore, store.store) || !reflect.DeepEqual(test.wantStrategySaveCount, test.db.SaveStrategyCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantStrategySaveCount,
+					got1, store.store, test.db.SaveStrategyCount)
+			}
+		})
+	}
+}
+
+func Test_strategyStore_SetMinContractPrice(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                  string
+		db                    *testDB
+		store                 map[string]*Strategy
+		arg1                  string
+		arg2                  float64
+		arg3                  time.Time
+		want1                 error
+		wantStore             map[string]*Strategy
+		wantStrategySaveCount int
+	}{
+		{name: "該当する戦略がなければ変更なし",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "",
+			arg2:  10_000,
+			arg3:  time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local),
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			wantStrategySaveCount: 0},
+		{name: "該当する戦略があれば更新する",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "strategy-code-002",
+			arg2:  10_000,
+			arg3:  time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local),
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002", MinContractPrice: 10_000, MinContractDateTime: time.Date(2021, 10, 26, 10, 0, 0, 0, time.Local)},
+				"strategy-code-003": {Code: "strategy-code-003"}},
+			wantStrategySaveCount: 1},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &strategyStore{store: test.store, db: test.db}
+			got1 := store.SetMinContractPrice(test.arg1, test.arg2, test.arg3)
 
 			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
 

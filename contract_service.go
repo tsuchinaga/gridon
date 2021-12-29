@@ -81,6 +81,13 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 						return err
 					}
 				}
+
+				// 戦略の最終約定情報より新しい約定情報であれば更新
+				if strategy.LastContractDateTime.Before(c.ContractDateTime) {
+					if err := s.updateContractPrice(strategy, c.Price, c.ContractDateTime); err != nil {
+						return err
+					}
+				}
 			}
 
 			// エグジット注文が取消されたら拘束していたポジションを解放する
@@ -107,13 +114,8 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 		return ErrNilArgument
 	}
 
-	strategy, err := s.strategyStore.GetByCode(order.StrategyCode)
-	if err != nil {
-		return err
-	}
-
 	// ポジションの登録
-	err = s.positionStore.Save(&Position{
+	err := s.positionStore.Save(&Position{
 		Code:             contract.PositionCode,
 		StrategyCode:     order.StrategyCode,
 		OrderCode:        order.Code,
@@ -136,13 +138,6 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 		return err
 	}
 
-	// 戦略の最終約定情報より新しい約定情報であれば更新
-	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -152,11 +147,6 @@ func (s *contractService) entryContract(order *Order, contract Contract) error {
 func (s *contractService) exitContract(order *Order, contract Contract) error {
 	if order == nil {
 		return ErrNilArgument
-	}
-
-	strategy, err := s.strategyStore.GetByCode(order.StrategyCode)
-	if err != nil {
-		return err
 	}
 
 	// 注文が拘束しているポジションの更新
@@ -200,12 +190,6 @@ func (s *contractService) exitContract(order *Order, contract Contract) error {
 		}
 	}
 
-	// 戦略の最終約定情報より新しい約定情報であれば更新
-	if strategy.LastContractDateTime.Before(contract.ContractDateTime) {
-		if err := s.strategyStore.SetContractPrice(order.StrategyCode, contract.Price, contract.ContractDateTime); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -224,5 +208,67 @@ func (s *contractService) releaseHoldPositions(order *Order) error {
 		}
 		order.HoldPositions[i].ReleaseQuantity += leave
 	}
+	return nil
+}
+
+// updateContractPrice - 戦略の約定情報を更新する
+func (s *contractService) updateContractPrice(strategy *Strategy, contractPrice float64, contractDateTime time.Time) error {
+	if strategy == nil {
+		return ErrNilArgument
+	}
+
+	// 戦略の最終約定情報より新しい約定情報であれば更新
+	if strategy.LastContractDateTime.Before(contractDateTime) {
+		if err := s.strategyStore.SetContractPrice(strategy.Code, contractPrice, contractDateTime); err != nil {
+			return err
+		}
+	}
+
+	// 実行可能なグリッド戦略がなければ終了
+	if !strategy.GridStrategy.IsRunnable(contractDateTime) {
+		return nil
+	}
+
+	for _, tr := range strategy.GridStrategy.TimeRanges {
+		// 約定日時がグリッド時刻範囲外ならスキップ
+		if !tr.In(contractDateTime) {
+			continue
+		}
+
+		// 約定日の当グリッド期間の開始時刻
+		currentStart := time.Date(
+			contractDateTime.Year(),
+			contractDateTime.Month(),
+			contractDateTime.Day(),
+			tr.Start.Hour(),
+			tr.Start.Minute(),
+			tr.Start.Second(),
+			tr.Start.Nanosecond(),
+			contractDateTime.Location())
+		var err error
+
+		// 最大約定日時が当グリッド時間の始まりより前か、最大約定日時がグリッド時間範囲外なら無条件で更新
+		// 最大約定日時が同一グリッド時間範囲であって、新しい約定値のほうが高ければ更新
+		if strategy.MaxContractDateTime.Before(currentStart) || !tr.In(strategy.MaxContractDateTime) {
+			err = s.strategyStore.SetMaxContractPrice(strategy.Code, contractPrice, contractDateTime)
+		} else if strategy.MaxContractDateTime.IsZero() || strategy.MaxContractPrice < contractPrice {
+			err = s.strategyStore.SetMaxContractPrice(strategy.Code, contractPrice, contractDateTime)
+		}
+		if err != nil {
+			return err
+		}
+
+		// 最小約定日時が当グリッド時間の始まりより前か、最小約定日時がグリッド時間範囲外なら無条件で更新
+		// 最小約定日時が同一グリッド時間範囲であって、新しい約定値のほうが高ければ更新
+		if strategy.MinContractDateTime.Before(currentStart) || !tr.In(strategy.MinContractDateTime) {
+			err = s.strategyStore.SetMinContractPrice(strategy.Code, contractPrice, contractDateTime)
+		} else if strategy.MinContractDateTime.IsZero() || strategy.MinContractPrice > contractPrice {
+			err = s.strategyStore.SetMinContractPrice(strategy.Code, contractPrice, contractDateTime)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

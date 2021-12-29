@@ -18,6 +18,10 @@ type Strategy struct {
 	BasePriceDateTime    time.Time         // 基準価格日時
 	LastContractPrice    float64           // 最終約定価格
 	LastContractDateTime time.Time         // 最終約定価格日時
+	MaxContractPrice     float64           // 最大約定価格
+	MaxContractDateTime  time.Time         // 最大約定価格日時
+	MinContractPrice     float64           // 最小約定価格
+	MinContractDateTime  time.Time         // 最小約定価格日時
 	TickGroup            TickGroup         // 呼値グループ
 	RebalanceStrategy    RebalanceStrategy // リバランス戦略
 	GridStrategy         GridStrategy      // グリッド戦略

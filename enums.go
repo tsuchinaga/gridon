@@ -1,5 +1,7 @@
 package gridon
 
+import "math"
+
 // Exchange - 市場
 type Exchange string
 
@@ -108,3 +110,63 @@ const (
 	TickGroupTopix100    TickGroup = "topix100"
 	TickGroupOther       TickGroup = "other"
 )
+
+// GridType - グリッド戦略種別
+type GridType string
+
+const (
+	GridTypeUnspecified   GridType = ""
+	GridTypeStatic        GridType = "static"  // 静的、動的な変更なし
+	GridTypeDynamicMinMax GridType = "min_max" // 最小・最大約定値からの動的グリッド
+)
+
+// Rounding - 端数処理
+type Rounding string
+
+const (
+	RoundingUnspecified Rounding = ""      // 未指定, そのまま
+	RoundingFloor       Rounding = "floor" // 切り捨て
+	RoundingRound       Rounding = "round" // 四捨五入
+	RoundingCeil        Rounding = "ceil"  // 切り上げ
+)
+
+// Calc - 端数処理を計算した結果を返す
+func (e Rounding) Calc(v float64) float64 {
+	switch e {
+	case RoundingFloor:
+		return math.Floor(v)
+	case RoundingRound:
+		return math.Round(v)
+	case RoundingCeil:
+		return math.Ceil(v)
+	default:
+		return v
+	}
+}
+
+// Operation - 演算子
+type Operation string
+
+const (
+	OperationUnspecified Operation = ""  // 未指定
+	OperationPlus        Operation = "+" // 加算
+	OperationMinus       Operation = "-" // 減算
+	OperationMultiple    Operation = "*" // 積算
+	OperationDived       Operation = "/" // 除算
+)
+
+// Calc - 演算子の計算結果を返す
+func (e Operation) Calc(a, b float64) float64 {
+	switch e {
+	case OperationPlus:
+		return a + b
+	case OperationMinus:
+		return a - b
+	case OperationMultiple:
+		return a * b
+	case OperationDived:
+		return a / b
+	default:
+		return a + b
+	}
+}

@@ -134,3 +134,82 @@ func Test_newTick(t *testing.T) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
 }
+
+func Test_tick_Ticks(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		arg1  TickGroup
+		arg2  float64
+		arg3  float64
+		want1 int
+	}{
+		{name: "aとbが一致しているなら0",
+			arg1:  TickGroupOther,
+			arg2:  200,
+			arg3:  200,
+			want1: 0},
+		{name: "aとbがa<bで、1ティック未満の差なら1",
+			arg1:  TickGroupOther,
+			arg2:  200,
+			arg3:  200.1,
+			want1: 1},
+		{name: "aとbがa>bで、1ティック未満の差なら1",
+			arg1:  TickGroupOther,
+			arg2:  200.1,
+			arg3:  200,
+			want1: 1},
+		{name: "aとbがともに最初の水準でなければ、最初の水準での計算はスキップされる",
+			arg1:  TickGroupOther,
+			arg2:  3100,
+			arg3:  3200,
+			want1: 20},
+		{name: "指定してtickGroupが存在しなければ、その他のとして計算する",
+			arg1:  TickGroup("hoge"),
+			arg2:  3100,
+			arg3:  3200,
+			want1: 20},
+		{name: "TOPIX100グループで、minとmaxが同じ値段水準にあるときにTICK数が得られる",
+			arg1:  TickGroupTopix100,
+			arg2:  200,
+			arg3:  201.5,
+			want1: 15},
+		{name: "TOPIX100グループで、minとmaxが水準が1段階離れているときにTICK数が得られる",
+			arg1:  TickGroupTopix100,
+			arg2:  900,
+			arg3:  1_100,
+			want1: 1_200},
+		{name: "TOPIX100グループで、minとmaxが水準が2段階離れているときにTICK数が得られる",
+			arg1:  TickGroupTopix100,
+			arg2:  900,
+			arg3:  3_100,
+			want1: 5_100},
+		{name: "その他グループで、minとmaxが同じ値段水準にあるときにTICK数が得られる",
+			arg1:  TickGroupOther,
+			arg2:  2000,
+			arg3:  2050,
+			want1: 50},
+		{name: "その他グループで、minとmaxが水準が1段階離れているときにTICK数が得られる",
+			arg1:  TickGroupOther,
+			arg2:  2500,
+			arg3:  3500,
+			want1: 600},
+		{name: "その他グループで、minとmaxが水準が2段階離れているときにTICK数が得られる",
+			arg1:  TickGroupOther,
+			arg2:  2500,
+			arg3:  5_500,
+			want1: 950},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			tick := &tick{}
+			got1 := tick.Ticks(test.arg1, test.arg2, test.arg3)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}

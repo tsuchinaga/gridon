@@ -75,11 +75,13 @@ type Account struct {
 
 // GridStrategy - グリッド戦略
 type GridStrategy struct {
-	Runnable      bool        // 実行可能かどうか
-	Width         int         // グリッド幅(tick数)
-	Quantity      float64     // 1グリッドに乗せる数量
-	NumberOfGrids int         // 指値注文を入れておくグリッドの本数
-	TimeRanges    []TimeRange // 戦略動作時刻範囲
+	Runnable          bool              // 実行可能かどうか
+	Width             int               // グリッド幅(tick数)
+	Quantity          float64           // 1グリッドに乗せる数量
+	NumberOfGrids     int               // 指値注文を入れておくグリッドの本数
+	TimeRanges        []TimeRange       // 戦略動作時刻範囲
+	GridType          GridType          // グリッド戦略種別
+	DynamicGridMinMax DynamicGridMinMax // 最小・最大約定値からの動的グリッド
 }
 
 // IsRunnable - グリッド戦略が実行可能かどうか
@@ -95,6 +97,22 @@ func (v *GridStrategy) IsRunnable(now time.Time) bool {
 	}
 
 	return false
+}
+
+// DynamicGridMinMax - 最小・最大約定値からの動的グリッド
+type DynamicGridMinMax struct {
+	Divide    float64   // 最低・最大の差をDivideで割った値を加算する。1ならそのまま、5なら差の1/5を加算
+	Rounding  Rounding  // 端数処理
+	Operation Operation // 演算子
+}
+
+// Width - 計算後グリッド幅
+func (v *DynamicGridMinMax) Width(width int, diff int) int {
+	if v.Divide == 0 {
+		return width
+	}
+
+	return int(v.Operation.Calc(float64(width), v.Rounding.Calc(float64(diff)/v.Divide)))
 }
 
 // RebalanceStrategy - リバランス戦略

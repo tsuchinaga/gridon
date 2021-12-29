@@ -36,6 +36,8 @@ type IStrategyStore interface {
 	AddStrategyCash(strategyCode string, cashDiff float64) error
 	SetBasePrice(strategyCode string, basePrice float64, basePriceDateTime time.Time) error
 	SetContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
+	SetMaxContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
+	SetMinContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
 	SetTickGroup(strategyCode string, tickGroup TickGroup) error
 	Save(strategy *Strategy) error
 }
@@ -138,6 +140,36 @@ func (s *strategyStore) SetContractPrice(strategyCode string, contractPrice floa
 		s.store[strategyCode].LastContractDateTime = contractDateTime
 		s.store[strategyCode].BasePrice = contractPrice
 		s.store[strategyCode].BasePriceDateTime = contractDateTime
+
+		go s.db.SaveStrategy(s.store[strategyCode])
+	}
+
+	return nil
+}
+
+// SetMaxContractPrice - 最大約定情報をセットする
+func (s *strategyStore) SetMaxContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	if _, ok := s.store[strategyCode]; ok {
+		s.store[strategyCode].MaxContractPrice = contractPrice
+		s.store[strategyCode].MaxContractDateTime = contractDateTime
+
+		go s.db.SaveStrategy(s.store[strategyCode])
+	}
+
+	return nil
+}
+
+// SetMinContractPrice - 最小約定情報をセットする
+func (s *strategyStore) SetMinContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	if _, ok := s.store[strategyCode]; ok {
+		s.store[strategyCode].MinContractPrice = contractPrice
+		s.store[strategyCode].MinContractDateTime = contractDateTime
 
 		go s.db.SaveStrategy(s.store[strategyCode])
 	}
