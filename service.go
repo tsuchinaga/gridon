@@ -224,16 +224,10 @@ func (s *service) contractTask() {
 func (s *service) orderScheduler() {
 	s.logger.Notice("注文スケジューラ起動")
 
-	// 次の0秒のタイミングまで待機
-	now := s.clock.Now()
-	nextRun := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute()+1, 0, 0, now.Location())
-	time.Sleep(nextRun.Sub(now))
-
 	// 1分に1回非同期で処理を実行する
-	ticker := time.NewTicker(1 * time.Minute)
 	for {
+		<-time.After(s.clock.NextMinuteDuration(s.clock.Now()))
 		go s.orderTask()
-		<-ticker.C
 	}
 }
 
