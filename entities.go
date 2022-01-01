@@ -23,6 +23,7 @@ type Strategy struct {
 	MinContractPrice     float64           // 最小約定価格
 	MinContractDateTime  time.Time         // 最小約定価格日時
 	TickGroup            TickGroup         // 呼値グループ
+	TradingUnit          float64           // 売買単位
 	RebalanceStrategy    RebalanceStrategy // リバランス戦略
 	GridStrategy         GridStrategy      // グリッド戦略
 	CancelStrategy       CancelStrategy    // 全取消戦略

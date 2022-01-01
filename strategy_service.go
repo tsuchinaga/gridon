@@ -31,5 +31,5 @@ func (s *strategyService) UpdateStrategyTickGroup(strategyCode string) error {
 		return err
 	}
 
-	return s.strategyStore.SetTickGroup(strategyCode, symbol.TickGroup)
+	return s.strategyStore.SetSymbolInfo(strategyCode, symbol.TickGroup, symbol.TradingUnit)
 }

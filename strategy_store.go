@@ -38,7 +38,7 @@ type IStrategyStore interface {
 	SetContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
 	SetMaxContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
 	SetMinContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
-	SetTickGroup(strategyCode string, tickGroup TickGroup) error
+	SetSymbolInfo(strategyCode string, tickGroup TickGroup, tradingUnit float64) error
 	Save(strategy *Strategy) error
 }
 
@@ -177,13 +177,14 @@ func (s *strategyStore) SetMinContractPrice(strategyCode string, contractPrice f
 	return nil
 }
 
-// SetTickGroup - 呼値グループを設定する
-func (s *strategyStore) SetTickGroup(strategyCode string, tickGroup TickGroup) error {
+// SetSymbolInfo - 戦略で指定している銘柄情報を更新する
+func (s *strategyStore) SetSymbolInfo(strategyCode string, tickGroup TickGroup, tradingUnit float64) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
 	if _, ok := s.store[strategyCode]; ok {
 		s.store[strategyCode].TickGroup = tickGroup
+		s.store[strategyCode].TradingUnit = tradingUnit
 
 		go s.db.SaveStrategy(s.store[strategyCode])
 	}

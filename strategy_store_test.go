@@ -22,9 +22,9 @@ type testStrategyStore struct {
 	GetStrategiesCount         int
 	DeployFromDB1              error
 	DeployFromDBCount          int
-	SetTickGroup1              error
-	SetTickGroupCount          int
-	SetTickGroupHistory        []interface{}
+	SetSymbolInfo1             error
+	SetSymbolInfoCount         int
+	SetSymbolInfoHistory       []interface{}
 	SetContractPrice1          error
 	SetContractPriceHistory    []interface{}
 	SetContractPriceCount      int
@@ -84,11 +84,12 @@ func (t *testStrategyStore) DeployFromDB() error {
 	t.DeployFromDBCount++
 	return t.DeployFromDB1
 }
-func (t *testStrategyStore) SetTickGroup(strategyCode string, tickGroup TickGroup) error {
-	t.SetTickGroupHistory = append(t.SetTickGroupHistory, strategyCode)
-	t.SetTickGroupHistory = append(t.SetTickGroupHistory, tickGroup)
-	t.SetTickGroupCount++
-	return t.SetTickGroup1
+func (t *testStrategyStore) SetSymbolInfo(strategyCode string, tickGroup TickGroup, tradingUnit float64) error {
+	t.SetSymbolInfoHistory = append(t.SetSymbolInfoHistory, strategyCode)
+	t.SetSymbolInfoHistory = append(t.SetSymbolInfoHistory, tickGroup)
+	t.SetSymbolInfoHistory = append(t.SetSymbolInfoHistory, tradingUnit)
+	t.SetSymbolInfoCount++
+	return t.SetSymbolInfo1
 }
 func (t *testStrategyStore) Save(strategy *Strategy) error {
 	t.SaveHistory = append(t.SaveHistory, strategy)
@@ -449,7 +450,7 @@ func Test_strategyStore_Save(t *testing.T) {
 	}
 }
 
-func Test_strategyStore_SetTickGroup(t *testing.T) {
+func Test_strategyStore_SetSymbolInfo(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                  string
@@ -457,6 +458,7 @@ func Test_strategyStore_SetTickGroup(t *testing.T) {
 		store                 map[string]*Strategy
 		arg1                  string
 		arg2                  TickGroup
+		arg3                  float64
 		want1                 error
 		wantStore             map[string]*Strategy
 		wantStrategySaveCount int
@@ -470,6 +472,7 @@ func Test_strategyStore_SetTickGroup(t *testing.T) {
 			},
 			arg1:  "",
 			arg2:  TickGroupTopix100,
+			arg3:  100,
 			want1: nil,
 			wantStore: map[string]*Strategy{
 				"strategy-code-001": {Code: "strategy-code-001"},
@@ -485,10 +488,11 @@ func Test_strategyStore_SetTickGroup(t *testing.T) {
 			},
 			arg1:  "strategy-code-002",
 			arg2:  TickGroupTopix100,
+			arg3:  100,
 			want1: nil,
 			wantStore: map[string]*Strategy{
 				"strategy-code-001": {Code: "strategy-code-001"},
-				"strategy-code-002": {Code: "strategy-code-002", TickGroup: TickGroupTopix100},
+				"strategy-code-002": {Code: "strategy-code-002", TickGroup: TickGroupTopix100, TradingUnit: 100},
 				"strategy-code-003": {Code: "strategy-code-003"}},
 			wantStrategySaveCount: 1},
 	}
@@ -498,7 +502,7 @@ func Test_strategyStore_SetTickGroup(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			store := &strategyStore{store: test.store, db: test.db}
-			got1 := store.SetTickGroup(test.arg1, test.arg2)
+			got1 := store.SetSymbolInfo(test.arg1, test.arg2, test.arg3)
 
 			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
 
