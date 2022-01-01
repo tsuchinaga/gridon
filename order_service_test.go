@@ -1630,6 +1630,15 @@ func Test_orderService_sendOrder(t *testing.T) {
 			arg1:          &Strategy{},
 			arg2:          nil,
 			want1:         ErrNilArgument},
+		{name: "validationでerrorがあればエラー",
+			kabusAPI:   &testKabusAPI{},
+			orderStore: &testOrderStore{},
+			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
+				{Side: SideSell, OwnedQuantity: 50},
+			}},
+			arg1:  &Strategy{},
+			arg2:  &Order{TradeType: TradeTypeEntry, Side: SideSell, OrderQuantity: 1},
+			want1: ErrShortSellingRestriction},
 		{name: "注文送信に失敗したらエラー",
 			kabusAPI:      &testKabusAPI{SendOrder2: ErrUnknown},
 			orderStore:    &testOrderStore{},
@@ -1914,5 +1923,113 @@ func Test_newOrderService(t *testing.T) {
 	got1 := newOrderService(clock, kabusAPI, strategyStore, orderStore, positionStore, logger)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
+	}
+}
+
+func Test_orderService_validation(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		orderStore    *testOrderStore
+		positionStore *testPositionStore
+		arg1          *Strategy
+		arg2          *Order
+		want1         error
+	}{
+		{name: "戦略がnilならエラー",
+			orderStore:    &testOrderStore{},
+			positionStore: &testPositionStore{},
+			arg1:          nil,
+			arg2:          &Order{},
+			want1:         ErrNilArgument},
+		{name: "注文がnilならエラー",
+			orderStore:    &testOrderStore{},
+			positionStore: &testPositionStore{},
+			arg1:          &Strategy{},
+			arg2:          nil,
+			want1:         ErrNilArgument},
+		{name: "すでに売りポジションが50単元あったら、あらたに注文できない",
+			orderStore: &testOrderStore{},
+			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+			}},
+			arg1:  &Strategy{Code: "strategy-code-001", TradingUnit: 1},
+			arg2:  &Order{StrategyCode: "strategy-code-001", Side: SideSell, TradeType: TradeTypeEntry, OrderQuantity: 1},
+			want1: ErrShortSellingRestriction},
+		{name: "売りポジションが50単元未満でも、注文中の数量をあわせて50単元あったら、新たに注文できない",
+			orderStore: &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+			}},
+			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+			}},
+			arg1:  &Strategy{Code: "strategy-code-001", TradingUnit: 1},
+			arg2:  &Order{StrategyCode: "strategy-code-001", Side: SideSell, TradeType: TradeTypeEntry, OrderQuantity: 1},
+			want1: ErrShortSellingRestriction},
+		{name: "売りポジションが50単元未満で、注文中の数量をあわせて50単元あっても、注文がExitであれば、新たに注文できる",
+			orderStore: &testOrderStore{GetActiveOrdersByStrategyCode1: []*Order{
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+				{TradeType: TradeTypeExit, OrderQuantity: 2},
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+				{TradeType: TradeTypeExit, OrderQuantity: 2},
+				{TradeType: TradeTypeEntry, OrderQuantity: 2},
+				{TradeType: TradeTypeExit, OrderQuantity: 2},
+			}},
+			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+			}},
+			arg1:  &Strategy{Code: "strategy-code-001", TradingUnit: 1},
+			arg2:  &Order{StrategyCode: "strategy-code-001", Side: SideSell, TradeType: TradeTypeEntry, OrderQuantity: 1},
+			want1: nil},
+		{name: "すでにポジションが50単元あっても、売りポジションでなければ、あらたに注文できる",
+			orderStore: &testOrderStore{},
+			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
+				{Side: SideBuy, OwnedQuantity: 10},
+				{Side: SideBuy, OwnedQuantity: 10},
+				{Side: SideBuy, OwnedQuantity: 10},
+				{Side: SideBuy, OwnedQuantity: 10},
+				{Side: SideBuy, OwnedQuantity: 10},
+			}},
+			arg1:  &Strategy{Code: "strategy-code-001", TradingUnit: 1},
+			arg2:  &Order{StrategyCode: "strategy-code-001", Side: SideSell, TradeType: TradeTypeEntry, OrderQuantity: 1},
+			want1: nil},
+		{name: "すでに売りポジションが50単元あっても、エグジット注文であれば、あらたに注文できる",
+			orderStore: &testOrderStore{},
+			positionStore: &testPositionStore{GetActivePositionsByStrategyCode1: []*Position{
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+				{Side: SideSell, OwnedQuantity: 10},
+			}},
+			arg1:  &Strategy{Code: "strategy-code-001", TradingUnit: 1},
+			arg2:  &Order{StrategyCode: "strategy-code-001", Side: SideSell, TradeType: TradeTypeExit, OrderQuantity: 1},
+			want1: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &orderService{orderStore: test.orderStore, positionStore: test.positionStore}
+			got1 := service.validation(test.arg1, test.arg2)
+			if !errors.Is(got1, test.want1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
 	}
 }

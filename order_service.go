@@ -395,6 +395,10 @@ func (s *orderService) sendOrder(strategy *Strategy, order *Order) error {
 		return ErrNilArgument
 	}
 
+	if err := s.validation(strategy, order); err != nil {
+		return err
+	}
+
 	res, err := s.kabusAPI.SendOrder(strategy, order)
 	if err != nil {
 		// 拘束したポジションを解放する
@@ -417,6 +421,45 @@ func (s *orderService) sendOrder(strategy *Strategy, order *Order) error {
 			_ = s.positionStore.Release(hp.PositionCode, hp.HoldQuantity)
 		}
 		return fmt.Errorf("result=%+v, order=%+v: %w", res, order, ErrOrderCondition)
+	}
+
+	return nil
+}
+
+// validation - 注文が有効か、注文して問題ないかをチェックする:
+//   ただし、証券会社でチェックできるものは証券会社に送信して結果を得たほうが確実なので、ここではチェックしない
+func (s *orderService) validation(strategy *Strategy, order *Order) error {
+	if strategy == nil || order == nil {
+		return ErrNilArgument
+	}
+
+	// 空売り規制チェック
+	//   注文が新規売りで、保有中ポジション数量と新規注文中数量と今回注文数量の合計が50単元超になる場合はエラー
+	if order.TradeType == TradeTypeEntry && order.Side == SideSell {
+		q := order.OrderQuantity
+
+		// 保有ポジション数量の加算
+		positions, _ := s.positionStore.GetActivePositionsByStrategyCode(order.StrategyCode)
+		for _, p := range positions {
+			if p.Side != SideSell {
+				continue
+			}
+			q += p.OwnedQuantity
+		}
+
+		// 注文中数量の加算
+		orders, _ := s.orderStore.GetActiveOrdersByStrategyCode(order.StrategyCode)
+		for _, o := range orders {
+			if o.TradeType != TradeTypeEntry {
+				continue
+			}
+			q += o.OrderQuantity - o.ContractQuantity
+		}
+
+		// 単元数が50単元超かをチェック
+		if q/strategy.TradingUnit > 50 {
+			return ErrShortSellingRestriction
+		}
 	}
 
 	return nil
