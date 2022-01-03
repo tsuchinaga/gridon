@@ -40,6 +40,7 @@ type IStrategyStore interface {
 	SetMinContractPrice(strategyCode string, contractPrice float64, contractDateTime time.Time) error
 	SetTickGroup(strategyCode string, tickGroup TickGroup) error
 	Save(strategy *Strategy) error
+	DeleteByCode(code string) error
 }
 
 // strategyStore - 戦略ストア
@@ -203,6 +204,19 @@ func (s *strategyStore) Save(strategy *Strategy) error {
 	s.store[strategy.Code] = strategy
 
 	go s.db.SaveStrategy(s.store[strategy.Code])
+
+	return nil
+}
+
+// DeleteByCode - 戦略の削除
+func (s *strategyStore) DeleteByCode(code string) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	if _, ok := s.store[code]; ok {
+		delete(s.store, code)
+		go s.db.DeleteStrategyByCode(code)
+	}
 
 	return nil
 }

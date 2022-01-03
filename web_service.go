@@ -39,6 +39,10 @@ func (s *webService) StartWebServer() error {
 	}
 
 	s.routes = map[string]map[string]http.Handler{
+		"/api/strategy": {
+			"GET":    http.HandlerFunc(s.getStrategy),
+			"DELETE": http.HandlerFunc(s.deleteStrategy),
+		},
 		"/api/strategies": {
 			"GET":  http.HandlerFunc(s.getStrategies),
 			"POST": http.HandlerFunc(s.postSaveStrategy),
@@ -68,6 +72,35 @@ func (s *webService) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.routes[path][method].ServeHTTP(w, req)
 }
 
+// getStrategy - 戦略の取得
+func (s *webService) getStrategy(w http.ResponseWriter, req *http.Request) {
+	code := req.FormValue("code")
+	strategy, err := s.strategyStore.GetByCode(code)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(strategy)
+}
+
+// deleteStrategy - 戦略の削除
+func (s *webService) deleteStrategy(w http.ResponseWriter, req *http.Request) {
+	code := req.FormValue("code")
+	strategy, err := s.strategyStore.GetByCode(code)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := s.strategyStore.DeleteByCode(code); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(strategy)
+}
+
 // getStrategies - 戦略一覧の取得
 func (s *webService) getStrategies(w http.ResponseWriter, _ *http.Request) {
 	strategies, err := s.strategyStore.GetStrategies()
@@ -76,10 +109,7 @@ func (s *webService) getStrategies(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(strategies); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	_ = json.NewEncoder(w).Encode(strategies)
 }
 
 // postSaveStrategy - 戦略の保存
@@ -110,8 +140,5 @@ func (s *webService) postSaveStrategy(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(strategy); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	_ = json.NewEncoder(w).Encode(strategy)
 }

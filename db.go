@@ -69,6 +69,7 @@ func openDB(path string) (*genji.DB, error) {
 type IDB interface {
 	GetStrategies() ([]*Strategy, error)
 	SaveStrategy(strategy *Strategy) error
+	DeleteStrategyByCode(code string) error
 	GetActiveOrders() ([]*Order, error)
 	SaveOrder(order *Order) error
 	GetActivePositions() ([]*Position, error)
@@ -143,6 +144,17 @@ func (d *db) SaveStrategy(strategy *Strategy) error {
 	}
 
 	_ = tx.Commit()
+	return nil
+}
+
+// DeleteStrategyByCode - 戦略の削除
+func (d *db) DeleteStrategyByCode(code string) error {
+	d.logger.Notice(fmt.Sprintf("delete strategy: %+v", code))
+
+	if err := d.db.Exec(`delete from strategies where code = ?`, code); err != nil {
+		d.logger.Warning(err)
+		return d.wrapErr(err)
+	}
 	return nil
 }
 

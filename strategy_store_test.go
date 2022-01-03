@@ -17,6 +17,8 @@ type testStrategyStore struct {
 	SetBasePriceCount          int
 	GetByCode1                 *Strategy
 	GetByCode2                 error
+	GetByCodeHistory           []interface{}
+	GetByCodeCount             int
 	GetStrategies1             []*Strategy
 	GetStrategies2             error
 	GetStrategiesCount         int
@@ -37,9 +39,14 @@ type testStrategyStore struct {
 	Save1                      error
 	SaveHistory                []interface{}
 	SaveCount                  int
+	DeleteByCode1              error
+	DeleteByCodeHistory        []interface{}
+	DeleteByCodeCount          int
 }
 
-func (t *testStrategyStore) GetByCode(string) (*Strategy, error) {
+func (t *testStrategyStore) GetByCode(code string) (*Strategy, error) {
+	t.GetByCodeHistory = append(t.GetByCodeHistory, code)
+	t.GetByCodeCount++
 	return t.GetByCode1, t.GetByCode2
 }
 func (t *testStrategyStore) AddStrategyCash(strategyCode string, cashDiff float64) error {
@@ -94,6 +101,11 @@ func (t *testStrategyStore) Save(strategy *Strategy) error {
 	t.SaveHistory = append(t.SaveHistory, strategy)
 	t.SaveCount++
 	return t.Save1
+}
+func (t *testStrategyStore) DeleteByCode(code string) error {
+	t.DeleteByCodeHistory = append(t.DeleteByCodeHistory, code)
+	t.DeleteByCodeCount++
+	return t.DeleteByCode1
 }
 
 func Test_strategyStore_AddStrategyCash(t *testing.T) {
@@ -701,6 +713,68 @@ func Test_strategyStore_SetMinContractPrice(t *testing.T) {
 				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
 					test.want1, test.wantStore, test.wantStrategySaveCount,
 					got1, store.store, test.db.SaveStrategyCount)
+			}
+		})
+	}
+}
+
+func Test_strategyStore_DeleteByCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                          string
+		db                            *testDB
+		store                         map[string]*Strategy
+		arg1                          string
+		want1                         error
+		wantStore                     map[string]*Strategy
+		wantDeleteStrategyByCodeCount int
+	}{
+		{name: "指定した戦略がstoreになければ何もしない",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "strategy-code-004",
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			wantDeleteStrategyByCodeCount: 0},
+		{name: "指定した戦略がstoreにあれば、storeから消し、DBからも消す",
+			db: &testDB{},
+			store: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-002": {Code: "strategy-code-002"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			arg1:  "strategy-code-002",
+			want1: nil,
+			wantStore: map[string]*Strategy{
+				"strategy-code-001": {Code: "strategy-code-001"},
+				"strategy-code-003": {Code: "strategy-code-003"},
+			},
+			wantDeleteStrategyByCodeCount: 1},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			store := &strategyStore{store: test.store, db: test.db}
+			got1 := store.DeleteByCode(test.arg1)
+
+			time.Sleep(100 * time.Millisecond) // 非同期処理が実行されることの確認のため少し待機
+
+			if !errors.Is(got1, test.want1) ||
+				!reflect.DeepEqual(test.wantStore, store.store) ||
+				!reflect.DeepEqual(test.wantDeleteStrategyByCodeCount, test.db.DeleteStrategyByCodeCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.wantStore, test.wantDeleteStrategyByCodeCount,
+					got1, store.store, test.db.DeleteStrategyByCodeCount)
 			}
 		})
 	}
