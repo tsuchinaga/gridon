@@ -11,23 +11,26 @@ import (
 
 type testDB struct {
 	IDB
-	SaveStrategy1       error
-	SaveStrategyCount   int
-	SaveStrategyHistory []interface{}
-	SaveOrder1          error
-	SaveOrderCount      int
-	SaveOrderHistory    []interface{}
-	SavePosition1       error
-	SavePositionCount   int
-	SavePositionHistory []interface{}
-	GetStrategies1      []*Strategy
-	GetStrategies2      error
-	GetActiveOrders1    []*Order
-	GetActiveOrders2    error
-	GetActivePositions1 []*Position
-	GetActivePositions2 error
-	CleanupOrders1      error
-	CleanupPositions1   error
+	SaveStrategy1               error
+	SaveStrategyCount           int
+	SaveStrategyHistory         []interface{}
+	DeleteStrategyByCode1       error
+	DeleteStrategyByCodeCount   int
+	DeleteStrategyByCodeHistory []interface{}
+	SaveOrder1                  error
+	SaveOrderCount              int
+	SaveOrderHistory            []interface{}
+	SavePosition1               error
+	SavePositionCount           int
+	SavePositionHistory         []interface{}
+	GetStrategies1              []*Strategy
+	GetStrategies2              error
+	GetActiveOrders1            []*Order
+	GetActiveOrders2            error
+	GetActivePositions1         []*Position
+	GetActivePositions2         error
+	CleanupOrders1              error
+	CleanupPositions1           error
 }
 
 func (t *testDB) GetStrategies() ([]*Strategy, error) {
@@ -43,6 +46,11 @@ func (t *testDB) SaveStrategy(strategy *Strategy) error {
 	t.SaveStrategyHistory = append(t.SaveStrategyHistory, strategy)
 	t.SaveStrategyCount++
 	return t.SaveStrategy1
+}
+func (t *testDB) DeleteStrategyByCode(code string) error {
+	t.DeleteStrategyByCodeHistory = append(t.DeleteStrategyByCodeHistory, code)
+	t.DeleteStrategyByCodeCount++
+	return t.DeleteStrategyByCode1
 }
 func (t *testDB) SaveOrder(order *Order) error {
 	t.SaveOrderHistory = append(t.SaveOrderHistory, order)
@@ -580,6 +588,77 @@ func Test_db_CleanupPositions(t *testing.T) {
 
 			if !reflect.DeepEqual(test.wantPositions, positions) || !errors.Is(got, test.want) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantPositions, got, positions)
+			}
+		})
+	}
+}
+
+func Test_db_DeleteStrategyByCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name           string
+		logger         *testLogger
+		dataset        []*Strategy
+		arg            string
+		want           error
+		wantStrategies []*Strategy
+	}{
+		{name: "同じコードのデータがなければなにもしない",
+			logger: &testLogger{},
+			dataset: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-002"},
+				{Code: "strategy-code-003"},
+			},
+			arg:  "strategy-code-004",
+			want: nil,
+			wantStrategies: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-002"},
+				{Code: "strategy-code-003"},
+			}},
+		{name: "同じコードのデータがあったら削除される",
+			logger: &testLogger{},
+			dataset: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-002"},
+				{Code: "strategy-code-003"},
+			},
+			arg:  "strategy-code-002",
+			want: nil,
+			wantStrategies: []*Strategy{
+				{Code: "strategy-code-001"},
+				{Code: "strategy-code-003"},
+			}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			d, _ := openDB(":memory:")
+			defer d.Close()
+			for _, data := range test.dataset {
+				if err := d.Exec(`insert into strategies values ?`, data); err != nil {
+					t.Errorf("%s insert error\n%+v\n", t.Name(), err)
+				}
+			}
+
+			db := &db{db: d, logger: test.logger}
+			got := db.DeleteStrategyByCode(test.arg)
+
+			strategies := make([]*Strategy, 0)
+			res, _ := d.Query("select * from strategies order by code")
+			defer res.Close()
+			_ = res.Iterate(func(d types.Document) error {
+				var strategy Strategy
+				_ = document.StructScan(d, &strategy)
+				strategies = append(strategies, &strategy)
+				return nil
+			})
+
+			if !reflect.DeepEqual(test.wantStrategies, strategies) || !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantStrategies, got, strategies)
 			}
 		})
 	}

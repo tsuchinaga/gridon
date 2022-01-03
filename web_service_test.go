@@ -1,6 +1,7 @@
 package gridon
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -475,6 +476,304 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 					!reflect.DeepEqual(test.wantSaveStrategyHistory, test.strategyStore.SaveHistory),
 					test.wantStatusCode, test.wantBody, test.wantGetSymbolHistory, test.wantSaveStrategyHistory,
 					res.StatusCode, strBody, test.kabusAPI.GetSymbolHistory, test.strategyStore.SaveHistory)
+			}
+		})
+	}
+}
+
+func Test_webService_getStrategy(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                 string
+		strategyStore        *testStrategyStore
+		params               string
+		wantStatusCode       int
+		wantBody             string
+		wantGetByCodeHistory []interface{}
+	}{
+		{name: "codeが指定されていなければエラー",
+			strategyStore:        &testStrategyStore{GetByCode2: ErrNoData},
+			params:               "",
+			wantStatusCode:       http.StatusBadRequest,
+			wantBody:             `no data`,
+			wantGetByCodeHistory: []interface{}{""}},
+		{name: "指定したcodeがなければエラー",
+			strategyStore:        &testStrategyStore{GetByCode2: ErrNoData},
+			params:               "?code=strategy-code-001",
+			wantStatusCode:       http.StatusBadRequest,
+			wantBody:             `no data`,
+			wantGetByCodeHistory: []interface{}{"strategy-code-001"}},
+		{name: "指定したcodeの戦略があれば、戦略の中身を返す",
+			strategyStore: &testStrategyStore{GetByCode1: &Strategy{
+				Code:                 "1458-buy",
+				SymbolCode:           "1458",
+				Exchange:             ExchangeToushou,
+				Product:              ProductMargin,
+				MarginTradeType:      MarginTradeTypeDay,
+				EntrySide:            SideBuy,
+				Cash:                 858_010,
+				BasePrice:            17_995,
+				BasePriceDateTime:    time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
+				LastContractPrice:    17_995,
+				LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
+				TickGroup:            TickGroupTopix100,
+				RebalanceStrategy: RebalanceStrategy{
+					Runnable: true,
+					Timings: []time.Time{
+						time.Date(0, 1, 1, 8, 59, 0, 0, time.Local),
+						time.Date(0, 1, 1, 12, 29, 0, 0, time.Local),
+					},
+				},
+				GridStrategy: GridStrategy{
+					Runnable:      true,
+					Width:         12,
+					Quantity:      1,
+					NumberOfGrids: 3,
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 28, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					},
+					GridType: "min_max",
+					DynamicGridMinMax: DynamicGridMinMax{
+						Divide:    5,
+						Rounding:  "ceil",
+						Operation: "+",
+					},
+				},
+				CancelStrategy: CancelStrategy{
+					Runnable: true,
+					Timings: []time.Time{
+						time.Date(0, 1, 1, 11, 28, 0, 0, time.Local),
+						time.Date(0, 1, 1, 14, 58, 0, 0, time.Local),
+					},
+				},
+				ExitStrategy: ExitStrategy{
+					Runnable: true,
+					Conditions: []ExitCondition{
+						{ExecutionType: ExecutionTypeMarketMorningClose, Timing: time.Date(0, 1, 1, 11, 29, 0, 0, time.Local)},
+						{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
+					},
+				},
+				Account: Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+			}},
+			params:               "?code=1458-buy",
+			wantStatusCode:       http.StatusOK,
+			wantBody:             `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantGetByCodeHistory: []interface{}{"1458-buy"}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			service := &webService{strategyStore: test.strategyStore}
+			ts := httptest.NewServer(http.HandlerFunc(service.getStrategy))
+			defer ts.Close()
+
+			res, err := http.Get(fmt.Sprintf("%s%s", ts.URL, test.params))
+			if err != nil {
+				t.Errorf("%s request error\nerr: %+v\n", t.Name(), err)
+			}
+			defer res.Body.Close()
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Errorf("%s read body error\nerr: %+v\n", t.Name(), err)
+			}
+			strBody := strings.Trim(string(body), "\n")
+
+			if !reflect.DeepEqual(test.wantStatusCode, res.StatusCode) ||
+				!reflect.DeepEqual(test.wantBody, strBody) ||
+				!reflect.DeepEqual(test.wantGetByCodeHistory, test.strategyStore.GetByCodeHistory) {
+				t.Errorf("%s error\nresult: %v, %v, %v\nwant: %+v, %+v, %v\ngot: %+v, %+v, %v\n", t.Name(),
+					!reflect.DeepEqual(test.wantStatusCode, res.StatusCode),
+					!reflect.DeepEqual(test.wantBody, strBody),
+					!reflect.DeepEqual(test.wantGetByCodeHistory, test.strategyStore.GetByCodeHistory),
+					test.wantStatusCode, test.wantBody, test.wantGetByCodeHistory,
+					res.StatusCode, strBody, test.strategyStore.GetByCodeHistory)
+			}
+		})
+	}
+}
+
+func Test_webService_deleteStrategy(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                    string
+		strategyStore           *testStrategyStore
+		params                  string
+		wantStatusCode          int
+		wantBody                string
+		wantGetByCodeHistory    []interface{}
+		wantDeleteByCodeHistory []interface{}
+	}{
+		{name: "codeが指定されていなければエラー",
+			strategyStore:        &testStrategyStore{GetByCode2: ErrNoData},
+			params:               "",
+			wantStatusCode:       http.StatusBadRequest,
+			wantBody:             `no data`,
+			wantGetByCodeHistory: []interface{}{""}},
+		{name: "指定したcodeがなければエラー",
+			strategyStore:        &testStrategyStore{GetByCode2: ErrNoData},
+			params:               "?code=strategy-code-001",
+			wantStatusCode:       http.StatusBadRequest,
+			wantBody:             `no data`,
+			wantGetByCodeHistory: []interface{}{"strategy-code-001"}},
+		{name: "指定したcodeの戦略があっても、削除に失敗すればエラー",
+			strategyStore: &testStrategyStore{
+				GetByCode1: &Strategy{
+					Code:                 "1458-buy",
+					SymbolCode:           "1458",
+					Exchange:             ExchangeToushou,
+					Product:              ProductMargin,
+					MarginTradeType:      MarginTradeTypeDay,
+					EntrySide:            SideBuy,
+					Cash:                 858_010,
+					BasePrice:            17_995,
+					BasePriceDateTime:    time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
+					LastContractPrice:    17_995,
+					LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
+					TickGroup:            TickGroupTopix100,
+					RebalanceStrategy: RebalanceStrategy{
+						Runnable: true,
+						Timings: []time.Time{
+							time.Date(0, 1, 1, 8, 59, 0, 0, time.Local),
+							time.Date(0, 1, 1, 12, 29, 0, 0, time.Local),
+						},
+					},
+					GridStrategy: GridStrategy{
+						Runnable:      true,
+						Width:         12,
+						Quantity:      1,
+						NumberOfGrids: 3,
+						TimeRanges: []TimeRange{
+							{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 28, 0, 0, time.Local)},
+							{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+						},
+						GridType: "min_max",
+						DynamicGridMinMax: DynamicGridMinMax{
+							Divide:    5,
+							Rounding:  "ceil",
+							Operation: "+",
+						},
+					},
+					CancelStrategy: CancelStrategy{
+						Runnable: true,
+						Timings: []time.Time{
+							time.Date(0, 1, 1, 11, 28, 0, 0, time.Local),
+							time.Date(0, 1, 1, 14, 58, 0, 0, time.Local),
+						},
+					},
+					ExitStrategy: ExitStrategy{
+						Runnable: true,
+						Conditions: []ExitCondition{
+							{ExecutionType: ExecutionTypeMarketMorningClose, Timing: time.Date(0, 1, 1, 11, 29, 0, 0, time.Local)},
+							{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
+						},
+					},
+					Account: Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+				},
+				DeleteByCode1: ErrUnknown},
+			params:                  "?code=1458-buy",
+			wantStatusCode:          http.StatusInternalServerError,
+			wantBody:                `unknown`,
+			wantGetByCodeHistory:    []interface{}{"1458-buy"},
+			wantDeleteByCodeHistory: []interface{}{"1458-buy"}},
+		{name: "指定したcodeの戦略があり、削除に成功すれば、戦略の中身を返す",
+			strategyStore: &testStrategyStore{
+				GetByCode1: &Strategy{
+					Code:                 "1458-buy",
+					SymbolCode:           "1458",
+					Exchange:             ExchangeToushou,
+					Product:              ProductMargin,
+					MarginTradeType:      MarginTradeTypeDay,
+					EntrySide:            SideBuy,
+					Cash:                 858_010,
+					BasePrice:            17_995,
+					BasePriceDateTime:    time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
+					LastContractPrice:    17_995,
+					LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
+					TickGroup:            TickGroupTopix100,
+					RebalanceStrategy: RebalanceStrategy{
+						Runnable: true,
+						Timings: []time.Time{
+							time.Date(0, 1, 1, 8, 59, 0, 0, time.Local),
+							time.Date(0, 1, 1, 12, 29, 0, 0, time.Local),
+						},
+					},
+					GridStrategy: GridStrategy{
+						Runnable:      true,
+						Width:         12,
+						Quantity:      1,
+						NumberOfGrids: 3,
+						TimeRanges: []TimeRange{
+							{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 28, 0, 0, time.Local)},
+							{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+						},
+						GridType: "min_max",
+						DynamicGridMinMax: DynamicGridMinMax{
+							Divide:    5,
+							Rounding:  "ceil",
+							Operation: "+",
+						},
+					},
+					CancelStrategy: CancelStrategy{
+						Runnable: true,
+						Timings: []time.Time{
+							time.Date(0, 1, 1, 11, 28, 0, 0, time.Local),
+							time.Date(0, 1, 1, 14, 58, 0, 0, time.Local),
+						},
+					},
+					ExitStrategy: ExitStrategy{
+						Runnable: true,
+						Conditions: []ExitCondition{
+							{ExecutionType: ExecutionTypeMarketMorningClose, Timing: time.Date(0, 1, 1, 11, 29, 0, 0, time.Local)},
+							{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
+						},
+					},
+					Account: Account{Password: "Password1234", AccountType: AccountTypeSpecific},
+				},
+				DeleteByCode1: nil},
+			params:                  "?code=1458-buy",
+			wantStatusCode:          http.StatusOK,
+			wantBody:                `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantGetByCodeHistory:    []interface{}{"1458-buy"},
+			wantDeleteByCodeHistory: []interface{}{"1458-buy"}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			service := &webService{strategyStore: test.strategyStore}
+			ts := httptest.NewServer(http.HandlerFunc(service.deleteStrategy))
+			defer ts.Close()
+
+			client := &http.Client{}
+			req, _ := http.NewRequest("DELETE", fmt.Sprintf("%s%s", ts.URL, test.params), nil)
+			res, err := client.Do(req)
+			if err != nil {
+				t.Errorf("%s request error\nerr: %+v\n", t.Name(), err)
+			}
+			defer res.Body.Close()
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Errorf("%s read body error\nerr: %+v\n", t.Name(), err)
+			}
+			strBody := strings.Trim(string(body), "\n")
+
+			if !reflect.DeepEqual(test.wantStatusCode, res.StatusCode) ||
+				!reflect.DeepEqual(test.wantBody, strBody) ||
+				!reflect.DeepEqual(test.wantGetByCodeHistory, test.strategyStore.GetByCodeHistory) ||
+				!reflect.DeepEqual(test.wantDeleteByCodeHistory, test.strategyStore.DeleteByCodeHistory) {
+				t.Errorf("%s error\nresult: %v, %v, %v, %v\nwant: %v, %+v, %+v, %v\ngot: %v, %+v, %+v, %v\n", t.Name(),
+					!reflect.DeepEqual(test.wantStatusCode, res.StatusCode),
+					!reflect.DeepEqual(test.wantBody, strBody),
+					!reflect.DeepEqual(test.wantGetByCodeHistory, test.strategyStore.GetByCodeHistory),
+					!reflect.DeepEqual(test.wantDeleteByCodeHistory, test.strategyStore.DeleteByCodeHistory),
+					test.wantStatusCode, test.wantBody, test.wantGetByCodeHistory, test.wantDeleteByCodeHistory,
+					res.StatusCode, strBody, test.strategyStore.GetByCodeHistory, test.strategyStore.DeleteByCodeHistory)
 			}
 		})
 	}
