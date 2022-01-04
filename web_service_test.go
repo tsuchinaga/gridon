@@ -144,6 +144,7 @@ func Test_webService_getStrategies(t *testing.T) {
 					LastContractPrice:    17_995,
 					LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
 					TickGroup:            TickGroupTopix100,
+					TradingUnit:          1,
 					RebalanceStrategy: RebalanceStrategy{
 						Runnable: true,
 						Timings: []time.Time{
@@ -190,6 +191,7 @@ func Test_webService_getStrategies(t *testing.T) {
 					LastContractPrice:    17_995,
 					LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
 					TickGroup:            TickGroupTopix100,
+					TradingUnit:          1,
 					RebalanceStrategy: RebalanceStrategy{
 						Runnable: true,
 						Timings: []time.Time{
@@ -231,7 +233,7 @@ func Test_webService_getStrategies(t *testing.T) {
 				},
 			}},
 			wantStatusCode: 200,
-			wantBody:       `[{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"","DynamicGridMinMax":{"Divide":0,"Rounding":"","Operation":""}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}},{"Code":"1458-sell","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"sell","Cash":885680,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}]`},
+			wantBody:       `[{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","TradingUnit":1,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"","DynamicGridMinMax":{"Divide":0,"Rounding":"","Operation":""}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}},{"Code":"1458-sell","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"sell","Cash":885680,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","TradingUnit":1,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}]`},
 	}
 
 	for _, test := range tests {
@@ -322,6 +324,7 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 				LastContractPrice:    17_995,
 				LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
 				TickGroup:            TickGroupTopix100,
+				TradingUnit:          1,
 				RebalanceStrategy: RebalanceStrategy{
 					Runnable: true,
 					Timings: []time.Time{
@@ -360,7 +363,7 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 			kabusAPI:             &testKabusAPI{GetSymbol1: &Symbol{Code: "1458", Exchange: ExchangeToushou, TradingUnit: 1, TickGroup: TickGroupTopix100}},
 			body:                 `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
 			wantStatusCode:       http.StatusOK,
-			wantBody:             `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantBody:             `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","TradingUnit":1,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
 			wantGetSymbolHistory: []interface{}{"1458", ExchangeToushou},
 			wantSaveStrategyHistory: []interface{}{&Strategy{
 				Code:                 "1458-buy",
@@ -375,6 +378,7 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 				LastContractPrice:    17_995,
 				LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
 				TickGroup:            TickGroupTopix100,
+				TradingUnit:          1,
 				RebalanceStrategy: RebalanceStrategy{
 					Runnable: true,
 					Timings: []time.Time{
@@ -419,16 +423,17 @@ func Test_webService_postSaveStrategy(t *testing.T) {
 			kabusAPI:             &testKabusAPI{GetSymbol1: &Symbol{Code: "1458", Exchange: ExchangeToushou, TradingUnit: 1, TickGroup: TickGroupOther}},
 			body:                 `{"Code":"1475-rebalance","SymbolCode":"1475","Exchange":"toushou","Product":"stock","EntrySide":"buy","Cash":75056,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
 			wantStatusCode:       http.StatusOK,
-			wantBody:             `{"Code":"1475-rebalance","SymbolCode":"1475","Exchange":"toushou","Product":"stock","MarginTradeType":"","EntrySide":"buy","Cash":75056,"BasePrice":0,"BasePriceDateTime":"0001-01-01T00:00:00Z","LastContractPrice":0,"LastContractDateTime":"0001-01-01T00:00:00Z","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"other","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":false,"Width":0,"Quantity":0,"NumberOfGrids":0,"TimeRanges":null,"GridType":"","DynamicGridMinMax":{"Divide":0,"Rounding":"","Operation":""}},"CancelStrategy":{"Runnable":false,"Timings":null},"ExitStrategy":{"Runnable":false,"Conditions":null},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantBody:             `{"Code":"1475-rebalance","SymbolCode":"1475","Exchange":"toushou","Product":"stock","MarginTradeType":"","EntrySide":"buy","Cash":75056,"BasePrice":0,"BasePriceDateTime":"0001-01-01T00:00:00Z","LastContractPrice":0,"LastContractDateTime":"0001-01-01T00:00:00Z","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"other","TradingUnit":1,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":false,"Width":0,"Quantity":0,"NumberOfGrids":0,"TimeRanges":null,"GridType":"","DynamicGridMinMax":{"Divide":0,"Rounding":"","Operation":""}},"CancelStrategy":{"Runnable":false,"Timings":null},"ExitStrategy":{"Runnable":false,"Conditions":null},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
 			wantGetSymbolHistory: []interface{}{"1475", ExchangeToushou},
 			wantSaveStrategyHistory: []interface{}{&Strategy{
-				Code:       "1475-rebalance",
-				SymbolCode: "1475",
-				Exchange:   ExchangeToushou,
-				Product:    ProductStock,
-				EntrySide:  SideBuy,
-				Cash:       75_056,
-				TickGroup:  TickGroupOther,
+				Code:        "1475-rebalance",
+				SymbolCode:  "1475",
+				Exchange:    ExchangeToushou,
+				Product:     ProductStock,
+				EntrySide:   SideBuy,
+				Cash:        75_056,
+				TickGroup:   TickGroupOther,
+				TradingUnit: 1,
 				RebalanceStrategy: RebalanceStrategy{
 					Runnable: true,
 					Timings: []time.Time{
@@ -512,6 +517,7 @@ func Test_webService_getStrategy(t *testing.T) {
 				LastContractPrice:    17_995,
 				LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
 				TickGroup:            TickGroupTopix100,
+				TradingUnit:          1,
 				RebalanceStrategy: RebalanceStrategy{
 					Runnable: true,
 					Timings: []time.Time{
@@ -553,7 +559,7 @@ func Test_webService_getStrategy(t *testing.T) {
 			}},
 			params:               "?code=1458-buy",
 			wantStatusCode:       http.StatusOK,
-			wantBody:             `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantBody:             `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","TradingUnit":1,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
 			wantGetByCodeHistory: []interface{}{"1458-buy"}},
 	}
 
@@ -629,6 +635,7 @@ func Test_webService_deleteStrategy(t *testing.T) {
 					LastContractPrice:    17_995,
 					LastContractDateTime: time.Date(2021, 12, 17, 15, 0, 0, 0, time.Local),
 					TickGroup:            TickGroupTopix100,
+					TradingUnit:          1,
 					RebalanceStrategy: RebalanceStrategy{
 						Runnable: true,
 						Timings: []time.Time{
@@ -731,7 +738,7 @@ func Test_webService_deleteStrategy(t *testing.T) {
 				DeleteByCode1: nil},
 			params:                  "?code=1458-buy",
 			wantStatusCode:          http.StatusOK,
-			wantBody:                `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
+			wantBody:                `{"Code":"1458-buy","SymbolCode":"1458","Exchange":"toushou","Product":"margin","MarginTradeType":"day","EntrySide":"buy","Cash":858010,"BasePrice":17995,"BasePriceDateTime":"2021-12-17T15:00:00+09:00","LastContractPrice":17995,"LastContractDateTime":"2021-12-17T15:00:00+09:00","MaxContractPrice":0,"MaxContractDateTime":"0001-01-01T00:00:00Z","MinContractPrice":0,"MinContractDateTime":"0001-01-01T00:00:00Z","TickGroup":"topix100","TradingUnit":0,"RebalanceStrategy":{"Runnable":true,"Timings":["0000-01-01T08:59:00+09:00","0000-01-01T12:29:00+09:00"]},"GridStrategy":{"Runnable":true,"Width":12,"Quantity":1,"NumberOfGrids":3,"TimeRanges":[{"Start":"0000-01-01T09:00:00+09:00","End":"0000-01-01T11:28:00+09:00"},{"Start":"0000-01-01T12:30:00+09:00","End":"0000-01-01T14:58:00+09:00"}],"GridType":"min_max","DynamicGridMinMax":{"Divide":5,"Rounding":"ceil","Operation":"+"}},"CancelStrategy":{"Runnable":true,"Timings":["0000-01-01T11:28:00+09:00","0000-01-01T14:58:00+09:00"]},"ExitStrategy":{"Runnable":true,"Conditions":[{"ExecutionType":"market_morning_close","Timing":"0000-01-01T11:29:00+09:00"},{"ExecutionType":"market_afternoon_close","Timing":"0000-01-01T14:59:00+09:00"}]},"Account":{"Password":"Password1234","AccountType":"specific"}}`,
 			wantGetByCodeHistory:    []interface{}{"1458-buy"},
 			wantDeleteByCodeHistory: []interface{}{"1458-buy"}},
 	}

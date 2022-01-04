@@ -127,13 +127,14 @@ func (s *webService) postSaveStrategy(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	// TICKグループのセット
+	// 銘柄情報のセット
 	symbol, err := s.kabusAPI.GetSymbol(strategy.SymbolCode, strategy.Exchange)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	strategy.TickGroup = symbol.TickGroup
+	strategy.TradingUnit = symbol.TradingUnit
 
 	if err := s.strategyStore.Save(strategy); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
