@@ -1395,3 +1395,272 @@ func Test_contractService_updateContractPrice(t *testing.T) {
 		})
 	}
 }
+
+func Test_contractService_Confirm_issue29(t *testing.T) {
+	t.Parallel()
+
+	// 2022/01/07 14:05:00 の約定確認を再現する
+
+	orderStore := &testOrderStore{
+		GetActiveOrdersByStrategyCode1: []*Order{
+			{
+				Code:         "20220107A02N87954257",
+				StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Price:            2046,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 44, 59, 9540114000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil,
+				HoldPositions:    nil},
+			{
+				Code:         "20220107A02N87954259",
+				StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+				TradeType: TradeTypeExit, Side: SideSell,
+				Price:            2050,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 45, 0, 2610443000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil,
+				HoldPositions:    []HoldPosition{{PositionCode: "E2022010701ZI6", Price: 2041, HoldQuantity: 3, ContractQuantity: 0, ReleaseQuantity: 0}}},
+			{
+				Code:         "20220107A02N87984149",
+				StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Price:            2047,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 59, 8, 0605613000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil,
+				HoldPositions:    nil},
+			{
+				Code:         "20220107A02N87984151",
+				StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+				TradeType: TradeTypeExit, Side: SideSell,
+				Price:            2051,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 59, 8, 3556296000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil,
+				HoldPositions:    []HoldPosition{{PositionCode: "E2022010701WVD", Price: 2046, HoldQuantity: 3, ContractQuantity: 0, ReleaseQuantity: 0}}},
+			{
+				Code:         "20220107A02N87984381",
+				StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Price:            2048,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 14, 1, 54, 4805408000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil,
+				HoldPositions:    nil},
+			{
+				Code:         "20220107A02N87984383",
+				StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+				TradeType: TradeTypeExit, Side: SideSell,
+				Price:            2052,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 14, 2, 0, 7774265000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil,
+				HoldPositions:    []HoldPosition{{PositionCode: "E2022010701T4M", Price: 2050, HoldQuantity: 3, ContractQuantity: 0, ReleaseQuantity: 0}}},
+		},
+	}
+
+	kabusAPI := &testKabusAPI{
+		GetOrders1: []SecurityOrder{
+			{
+				Code:       "20220107A02N87948181",
+				Status:     OrderStatusDone,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeExit, Side: SideSell,
+				Price:            2049,
+				OrderQuantity:    3,
+				ContractQuantity: 3,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 30, 39, 989353000, time.Local),
+				ContractDateTime: time.Date(2022, 1, 7, 14, 1, 46, 861981000, time.Local),
+				CancelDateTime:   time.Time{},
+				Contracts:        []Contract{{OrderCode: "20220107A02N87948181", PositionCode: "E2022010702ZV5", Price: 2049, Quantity: 3, ContractDateTime: time.Date(2022, 1, 7, 14, 1, 46, 861981000, time.Local)}}},
+			{
+				Code:       "20220107A02N87948186",
+				Status:     OrderStatusCanceled,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Price:            2045,
+				OrderQuantity:    0,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 30, 40, 301361000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Date(2022, 1, 7, 14, 1, 54, 485076000, time.Local),
+				Contracts:        nil},
+			{
+				Code:       "20220107A02N87954257",
+				Status:     OrderStatusInOrder,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Price:            2046,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 45, 0, 133007000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil},
+			{
+				Code:       "20220107A02N87954259",
+				Status:     OrderStatusInOrder,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeExit, Side: SideSell,
+				Price:            2050,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 45, 0, 413815000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil},
+			{
+				Code:       "20220107A02N87984149",
+				Status:     OrderStatusInOrder,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Price:            2047,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 59, 8, 264354000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil},
+			{
+				Code:       "20220107A02N87984151",
+				Status:     OrderStatusInOrder,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeExit, Side: SideSell,
+				Price:            2051,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 13, 59, 8, 545161000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil},
+			{
+				Code:       "20220107A02N87984381",
+				Status:     OrderStatusDone,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Price:            2048,
+				OrderQuantity:    3,
+				ContractQuantity: 3,
+				OrderDateTime:    time.Date(2022, 1, 7, 14, 2, 0, 679975000, time.Local),
+				ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local),
+				CancelDateTime:   time.Time{},
+				Contracts:        []Contract{{OrderCode: "20220107A02N87984381", PositionCode: "E202201070305Y", Price: 2048, Quantity: 3, ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local)}}},
+			{
+				Code:       "20220107A02N87984383",
+				Status:     OrderStatusInOrder,
+				SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+				TradeType: TradeTypeExit, Side: SideSell,
+				Price:            2052,
+				OrderQuantity:    3,
+				ContractQuantity: 0,
+				OrderDateTime:    time.Date(2022, 1, 7, 14, 2, 0, 976382000, time.Local),
+				ContractDateTime: time.Time{},
+				CancelDateTime:   time.Time{},
+				Contracts:        nil},
+		},
+	}
+
+	service := &contractService{
+		orderStore:    orderStore,
+		positionStore: &testPositionStore{},
+		strategyStore: &testStrategyStore{},
+		kabusAPI:      kabusAPI,
+	}
+	strategy := &Strategy{
+		Code:                 "1475-buy",
+		SymbolCode:           "1475",
+		Exchange:             ExchangeToushou,
+		Product:              ProductMargin,
+		MarginTradeType:      MarginTradeTypeDay,
+		EntrySide:            SideBuy,
+		Cash:                 147339,
+		BasePrice:            2049,
+		BasePriceDateTime:    time.Date(2022, 1, 7, 14, 1, 46, 861981000, time.Local),
+		LastContractPrice:    2049,
+		LastContractDateTime: time.Date(2022, 1, 7, 14, 1, 46, 861981000, time.Local),
+		MaxContractPrice:     2049,
+		MaxContractDateTime:  time.Date(2022, 1, 7, 12, 30, 0, 125167000, time.Local),
+		MinContractPrice:     2044,
+		MinContractDateTime:  time.Date(2022, 1, 7, 12, 33, 23, 855114000, time.Local),
+		TickGroup:            TickGroupOther,
+		TradingUnit:          1,
+		RebalanceStrategy: RebalanceStrategy{
+			Runnable: true,
+			Timings: []time.Time{
+				time.Date(0, 1, 1, 8, 59, 0, 0, time.Local),
+				time.Date(0, 1, 1, 12, 29, 0, 0, time.Local),
+			},
+		},
+		GridStrategy: GridStrategy{
+			Runnable:      true,
+			Width:         1,
+			Quantity:      3,
+			NumberOfGrids: 3,
+			TimeRanges: []TimeRange{
+				{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
+				{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+			},
+			GridType: GridTypeDynamicMinMax,
+			DynamicGridMinMax: DynamicGridMinMax{
+				Divide:    6,
+				Rounding:  RoundingFloor,
+				Operation: OperationPlus,
+			},
+		},
+		CancelStrategy: CancelStrategy{
+			Runnable: true,
+			Timings: []time.Time{
+				time.Date(0, 1, 1, 11, 31, 0, 0, time.Local),
+				time.Date(0, 1, 1, 14, 58, 0, 0, time.Local),
+			},
+		},
+		ExitStrategy: ExitStrategy{
+			Runnable: true,
+			Conditions: []ExitCondition{
+				{ExecutionType: ExecutionTypeMarketAfternoonClose, Timing: time.Date(0, 1, 1, 14, 59, 0, 0, time.Local)},
+			},
+		},
+		Account: Account{
+			Password:    "Password1234",
+			AccountType: AccountTypeSpecific,
+		},
+	}
+	got1 := service.Confirm(strategy)
+	var want1 error = nil
+	wantOrderStoreSaveHistory := []interface{}{&Order{
+		Code:         "20220107A02N87984381",
+		StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+		TradeType: TradeTypeEntry, Side: SideBuy,
+		Status:           OrderStatusDone,
+		Price:            2048,
+		OrderQuantity:    3,
+		ContractQuantity: 3,
+		OrderDateTime:    time.Date(2022, 1, 7, 14, 2, 0, 679975000, time.Local),
+		ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local),
+		CancelDateTime:   time.Time{},
+		Contracts:        []Contract{{OrderCode: "20220107A02N87984381", PositionCode: "E202201070305Y", Price: 2048, Quantity: 3, ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local)}},
+		HoldPositions:    nil}}
+
+	if !errors.Is(got1, nil) || !reflect.DeepEqual(wantOrderStoreSaveHistory, orderStore.SaveHistory) {
+		t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), want1, wantOrderStoreSaveHistory, got1, orderStore.SaveHistory)
+	}
+}
