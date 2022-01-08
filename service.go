@@ -43,7 +43,8 @@ func NewService() (IService, error) {
 			kabusAPI,
 			strategyStore,
 			orderStore,
-			positionStore),
+			positionStore,
+			newClock()),
 		rebalanceService: newRebalanceService(
 			newClock(),
 			kabusAPI,
@@ -209,6 +210,11 @@ func (s *service) contractTask() {
 
 			if err := s.contractService.Confirm(strategy); err != nil {
 				s.logger.Warning(fmt.Errorf("%s の約定確認処理でエラーが発生しました: %w", strategy.Code, err))
+				return
+			}
+
+			if err := s.contractService.ConfirmGridEnd(strategy); err != nil {
+				s.logger.Warning(fmt.Errorf("%s のグリッド終了時約定確認処理でエラーが発生しました: %w", strategy.Code, err))
 				return
 			}
 

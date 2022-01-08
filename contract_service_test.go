@@ -9,15 +9,23 @@ import (
 
 type testContractService struct {
 	IContractService
-	Confirm1       error
-	ConfirmCount   int
-	ConfirmHistory []interface{}
+	Confirm1              error
+	ConfirmCount          int
+	ConfirmHistory        []interface{}
+	ConfirmGridEnd1       error
+	ConfirmGridEndCount   int
+	ConfirmGridEndHistory []interface{}
 }
 
 func (t *testContractService) Confirm(strategy *Strategy) error {
 	t.ConfirmHistory = append(t.ConfirmHistory, strategy)
 	t.ConfirmCount++
 	return t.Confirm1
+}
+func (t *testContractService) ConfirmGridEnd(strategy *Strategy) error {
+	t.ConfirmGridEndHistory = append(t.ConfirmGridEndHistory, strategy)
+	t.ConfirmGridEndCount++
+	return t.ConfirmGridEnd1
 }
 
 func Test_contractService_releaseHoldPositions(t *testing.T) {
@@ -1064,13 +1072,15 @@ func Test_newContractService(t *testing.T) {
 	strategyStore := &strategyStore{}
 	orderStore := &orderStore{}
 	positionStore := &positionStore{}
+	clock := &testClock{}
 	want1 := &contractService{
 		kabusAPI:      kabusAPI,
 		strategyStore: strategyStore,
 		orderStore:    orderStore,
 		positionStore: positionStore,
+		clock:         clock,
 	}
-	got1 := newContractService(kabusAPI, strategyStore, orderStore, positionStore)
+	got1 := newContractService(kabusAPI, strategyStore, orderStore, positionStore, clock)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
@@ -1662,5 +1672,206 @@ func Test_contractService_Confirm_issue29(t *testing.T) {
 
 	if !errors.Is(got1, nil) || !reflect.DeepEqual(wantOrderStoreSaveHistory, orderStore.SaveHistory) {
 		t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), want1, wantOrderStoreSaveHistory, got1, orderStore.SaveHistory)
+	}
+}
+
+func Test_contractService_ConfirmGridEnd(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                                     string
+		clock                                    *testClock
+		orderStore                               *testOrderStore
+		kabusapi                                 *testKabusAPI
+		strategyStore                            *testStrategyStore
+		positionStore                            *testPositionStore
+		arg1                                     *Strategy
+		want1                                    error
+		wantOrderStoreSaveHistory                []interface{}
+		wantGetActiveOrdersByStrategyCodeHistory []interface{}
+		wantKabusApiGetOrdersHistory             []interface{}
+	}{
+		{name: "引数がnilならエラー",
+			clock:         &testClock{},
+			orderStore:    &testOrderStore{},
+			kabusapi:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			positionStore: &testPositionStore{},
+			arg1:          nil,
+			want1:         ErrNilArgument},
+		{name: "グリッド戦略が有効でなければ何もせずに終了",
+			clock:         &testClock{},
+			orderStore:    &testOrderStore{},
+			kabusapi:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			positionStore: &testPositionStore{},
+			arg1:          &Strategy{GridStrategy: GridStrategy{Runnable: false}},
+			want1:         nil},
+		{name: "グリッドの終了タイミングから1分以内でなければ何もせずに終了",
+			clock:         &testClock{Now1: time.Date(2022, 1, 7, 14, 0, 0, 0, time.Local)},
+			orderStore:    &testOrderStore{},
+			kabusapi:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			positionStore: &testPositionStore{},
+			arg1: &Strategy{GridStrategy: GridStrategy{Runnable: true, TimeRanges: []TimeRange{
+				{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+				{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)}}}},
+			want1: nil},
+		{name: "注文中の注文がなければ何もせずに終了",
+			clock: &testClock{Now1: time.Date(2022, 1, 7, 14, 58, 10, 0, time.Local)},
+			orderStore: &testOrderStore{
+				GetActiveOrdersByStrategyCode1: []*Order{}},
+			kabusapi:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			positionStore: &testPositionStore{},
+			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: true, TimeRanges: []TimeRange{
+				{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+				{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)}}}},
+			want1:                                    nil,
+			wantGetActiveOrdersByStrategyCodeHistory: []interface{}{"strategy-code-001"}},
+		{name: "注文中の取得でエラーがあればエラーを返す",
+			clock: &testClock{Now1: time.Date(2022, 1, 7, 14, 58, 10, 0, time.Local)},
+			orderStore: &testOrderStore{
+				GetActiveOrdersByStrategyCode2: ErrUnknown},
+			kabusapi:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			positionStore: &testPositionStore{},
+			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: true, TimeRanges: []TimeRange{
+				{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+				{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)}}}},
+			want1:                                    ErrUnknown,
+			wantGetActiveOrdersByStrategyCodeHistory: []interface{}{"strategy-code-001"}},
+		{name: "証券会社の注文取得でエラーがあればエラーを返す",
+			clock: &testClock{Now1: time.Date(2022, 1, 7, 14, 58, 10, 0, time.Local)},
+			orderStore: &testOrderStore{
+				GetActiveOrdersByStrategyCode1: []*Order{
+					{
+						Code:         "20220107A02N87984381",
+						StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+						TradeType: TradeTypeEntry, Side: SideBuy,
+						Price:            2048,
+						OrderQuantity:    3,
+						ContractQuantity: 0,
+						OrderDateTime:    time.Date(2022, 1, 7, 14, 1, 54, 4805408000, time.Local),
+						ContractDateTime: time.Time{},
+						CancelDateTime:   time.Time{},
+						Contracts:        nil,
+						HoldPositions:    nil}}},
+			kabusapi:      &testKabusAPI{GetOrders2: ErrUnknown},
+			strategyStore: &testStrategyStore{},
+			positionStore: &testPositionStore{},
+			arg1: &Strategy{Code: "strategy-code-001", Product: ProductMargin, SymbolCode: "1475", GridStrategy: GridStrategy{Runnable: true, TimeRanges: []TimeRange{
+				{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+				{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)}}}},
+			want1:                                    ErrUnknown,
+			wantGetActiveOrdersByStrategyCodeHistory: []interface{}{"strategy-code-001"},
+			wantKabusApiGetOrdersHistory:             []interface{}{ProductMargin, "1475", time.Date(2022, 1, 7, 12, 30, 0, 0, time.Local)}},
+		{name: "グリッドの終了タイミングから1分以内であれば、storeの注文一覧と、グリッド開始時刻以降に更新された注文を集めて約定確認をする",
+			clock: &testClock{Now1: time.Date(2022, 1, 7, 14, 58, 10, 0, time.Local)},
+			orderStore: &testOrderStore{
+				GetActiveOrdersByStrategyCode1: []*Order{
+					{
+						Code:         "20220107A02N87984381",
+						StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Status: OrderStatusInOrder, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+						TradeType: TradeTypeEntry, Side: SideBuy,
+						Price:            2048,
+						OrderQuantity:    3,
+						ContractQuantity: 0,
+						OrderDateTime:    time.Date(2022, 1, 7, 14, 1, 54, 4805408000, time.Local),
+						ContractDateTime: time.Time{},
+						CancelDateTime:   time.Time{},
+						Contracts:        nil,
+						HoldPositions:    nil}}},
+			kabusapi: &testKabusAPI{GetOrders1: []SecurityOrder{
+				{
+					Code:       "20220107A02N87984381",
+					Status:     OrderStatusDone,
+					SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, AccountType: AccountTypeSpecific, ExpireDay: time.Date(2022, 1, 7, 0, 0, 0, 0, time.Local),
+					TradeType: TradeTypeEntry, Side: SideBuy,
+					Price:            2048,
+					OrderQuantity:    3,
+					ContractQuantity: 3,
+					OrderDateTime:    time.Date(2022, 1, 7, 14, 2, 0, 679975000, time.Local),
+					ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local),
+					CancelDateTime:   time.Time{},
+					Contracts:        []Contract{{OrderCode: "20220107A02N87984381", PositionCode: "E202201070305Y", Price: 2048, Quantity: 3, ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local)}}}}},
+			strategyStore: &testStrategyStore{},
+			positionStore: &testPositionStore{},
+			arg1: &Strategy{Code: "strategy-code-001", Product: ProductMargin, SymbolCode: "1475", GridStrategy: GridStrategy{Runnable: true, TimeRanges: []TimeRange{
+				{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+				{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)}}}},
+			want1:                                    nil,
+			wantGetActiveOrdersByStrategyCodeHistory: []interface{}{"strategy-code-001"},
+			wantKabusApiGetOrdersHistory:             []interface{}{ProductMargin, "1475", time.Date(2022, 1, 7, 12, 30, 0, 0, time.Local)},
+			wantOrderStoreSaveHistory: []interface{}{&Order{
+				Code:         "20220107A02N87984381",
+				StrategyCode: "1475-buy", SymbolCode: "1475", Exchange: ExchangeToushou, Product: ProductMargin, MarginTradeType: MarginTradeTypeDay, ExecutionType: ExecutionTypeLimit, AccountType: AccountTypeSpecific,
+				TradeType: TradeTypeEntry, Side: SideBuy,
+				Status:           OrderStatusDone,
+				Price:            2048,
+				OrderQuantity:    3,
+				ContractQuantity: 3,
+				OrderDateTime:    time.Date(2022, 1, 7, 14, 2, 0, 679975000, time.Local),
+				ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local),
+				CancelDateTime:   time.Time{},
+				Contracts:        []Contract{{OrderCode: "20220107A02N87984381", PositionCode: "E202201070305Y", Price: 2048, Quantity: 3, ContractDateTime: time.Date(2022, 1, 7, 14, 3, 5, 816538000, time.Local)}},
+				HoldPositions:    nil}}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &contractService{
+				kabusAPI:      test.kabusapi,
+				strategyStore: test.strategyStore,
+				orderStore:    test.orderStore,
+				positionStore: test.positionStore,
+				clock:         test.clock,
+			}
+			got1 := service.ConfirmGridEnd(test.arg1)
+			if !errors.Is(got1, test.want1) ||
+				!reflect.DeepEqual(test.wantGetActiveOrdersByStrategyCodeHistory, test.orderStore.GetActiveOrdersByStrategyCodeHistory) ||
+				!reflect.DeepEqual(test.wantKabusApiGetOrdersHistory, test.kabusapi.GetOrdersHistory) ||
+				!reflect.DeepEqual(test.wantOrderStoreSaveHistory, test.orderStore.SaveHistory) {
+				t.Errorf("%s error\nresult: %+v, %+v, %+v, %+v\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
+					!errors.Is(got1, test.want1),
+					!reflect.DeepEqual(test.wantGetActiveOrdersByStrategyCodeHistory, test.orderStore.GetActiveOrdersByStrategyCodeHistory),
+					!reflect.DeepEqual(test.wantKabusApiGetOrdersHistory, test.kabusapi.GetOrdersHistory),
+					!reflect.DeepEqual(test.wantOrderStoreSaveHistory, test.orderStore.SaveHistory),
+					test.want1, test.wantGetActiveOrdersByStrategyCodeHistory, test.wantKabusApiGetOrdersHistory, test.wantOrderStoreSaveHistory,
+					got1, test.orderStore.GetActiveOrdersByStrategyCodeHistory, test.kabusapi.GetOrdersHistory, test.orderStore.SaveHistory)
+			}
+		})
+	}
+}
+
+func Test_contractService_confirm(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		arg1  *Strategy
+		arg2  []*Order
+		arg3  []SecurityOrder
+		want1 error
+	}{
+		{name: "引数がnilならエラー",
+			arg1:  nil,
+			arg2:  nil,
+			arg3:  nil,
+			want1: ErrNilArgument},
+		// 上記以外のエラーは他のconfirm処理から叩かれることでテストできている
+		// confirm自体に処理を追加した場合は、ここにテストを追加することが望ましい
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &contractService{}
+			got1 := service.confirm(test.arg1, test.arg2, test.arg3)
+			if !errors.Is(got1, test.want1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
 	}
 }

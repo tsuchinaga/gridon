@@ -123,15 +123,16 @@ func Test_service_finishOrderTask(t *testing.T) {
 func Test_service_contractTask(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name              string
-		logger            *testLogger
-		strategyStore     *testStrategyStore
-		contractService   *testContractService
-		gridService       *testGridService
-		contractRunning   bool
-		wantWarningCount  int
-		wantConfirmCount  int
-		wantLevelingCount int
+		name                    string
+		logger                  *testLogger
+		strategyStore           *testStrategyStore
+		contractService         *testContractService
+		gridService             *testGridService
+		contractRunning         bool
+		wantWarningCount        int
+		wantConfirmCount        int
+		wantConfirmGridEndCount int
+		wantLevelingCount       int
 	}{
 		{name: "実行中なら何もせず終了",
 			logger:            &testLogger{},
@@ -169,27 +170,39 @@ func Test_service_contractTask(t *testing.T) {
 			wantWarningCount:  1,
 			wantConfirmCount:  1,
 			wantLevelingCount: 0},
+		{name: "グリッド終了時約定確認でエラーが発生したらエラーを吐いて終了",
+			logger:                  &testLogger{},
+			strategyStore:           &testStrategyStore{GetStrategies1: []*Strategy{{Code: "strategy-code-001"}}},
+			contractService:         &testContractService{ConfirmGridEnd1: ErrUnknown},
+			gridService:             &testGridService{},
+			contractRunning:         false,
+			wantWarningCount:        1,
+			wantConfirmCount:        1,
+			wantConfirmGridEndCount: 1,
+			wantLevelingCount:       0},
 		{name: "グリッドの整地でエラーが発生したらエラーを吐いて終了",
-			logger:            &testLogger{},
-			strategyStore:     &testStrategyStore{GetStrategies1: []*Strategy{{Code: "strategy-code-001"}}},
-			contractService:   &testContractService{},
-			gridService:       &testGridService{Leveling1: ErrUnknown},
-			contractRunning:   false,
-			wantWarningCount:  1,
-			wantConfirmCount:  1,
-			wantLevelingCount: 1},
+			logger:                  &testLogger{},
+			strategyStore:           &testStrategyStore{GetStrategies1: []*Strategy{{Code: "strategy-code-001"}}},
+			contractService:         &testContractService{},
+			gridService:             &testGridService{Leveling1: ErrUnknown},
+			contractRunning:         false,
+			wantWarningCount:        1,
+			wantConfirmCount:        1,
+			wantConfirmGridEndCount: 1,
+			wantLevelingCount:       1},
 		{name: "戦略の数だけ約定確認とグリッドの整地をする",
 			logger: &testLogger{},
 			strategyStore: &testStrategyStore{GetStrategies1: []*Strategy{
 				{Code: "strategy-code-001"},
 				{Code: "strategy-code-002"},
 				{Code: "strategy-code-003"}}},
-			contractService:   &testContractService{},
-			gridService:       &testGridService{},
-			contractRunning:   false,
-			wantWarningCount:  0,
-			wantConfirmCount:  3,
-			wantLevelingCount: 3},
+			contractService:         &testContractService{},
+			gridService:             &testGridService{},
+			contractRunning:         false,
+			wantWarningCount:        0,
+			wantConfirmCount:        3,
+			wantConfirmGridEndCount: 3,
+			wantLevelingCount:       3},
 	}
 
 	for _, test := range tests {
@@ -204,12 +217,17 @@ func Test_service_contractTask(t *testing.T) {
 				contractRunning: test.contractRunning,
 			}
 			service.contractTask()
+
+			// 非同期処理を少し待つ
+			time.Sleep(100 * time.Millisecond)
+
 			if !reflect.DeepEqual(test.wantWarningCount, test.logger.WarningCount) ||
 				!reflect.DeepEqual(test.wantConfirmCount, test.contractService.ConfirmCount) ||
+				!reflect.DeepEqual(test.wantConfirmGridEndCount, test.contractService.ConfirmGridEndCount) ||
 				!reflect.DeepEqual(test.wantLevelingCount, test.gridService.LevelingCount) {
-				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
-					test.wantWarningCount, test.wantConfirmCount, test.wantLevelingCount,
-					test.logger.WarningCount, test.contractService.ConfirmCount, test.gridService.LevelingCount)
+				t.Errorf("%s error\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
+					test.wantWarningCount, test.wantConfirmCount, test.wantConfirmGridEndCount, test.wantLevelingCount,
+					test.logger.WarningCount, test.contractService.ConfirmCount, test.contractService.ConfirmGridEndCount, test.gridService.LevelingCount)
 			}
 		})
 	}
@@ -306,6 +324,10 @@ func Test_service_orderTask(t *testing.T) {
 				orderRunning:     test.orderRunning,
 			}
 			service.orderTask()
+
+			// 非同期処理を少し待つ
+			time.Sleep(100 * time.Millisecond)
+
 			if !reflect.DeepEqual(test.wantWarningCount, test.logger.WarningCount) ||
 				!reflect.DeepEqual(test.wantRebalanceCount, test.rebalanceService.RebalanceCount) ||
 				!reflect.DeepEqual(test.wantCancelAllCount, test.orderService.CancelAllCount) ||
