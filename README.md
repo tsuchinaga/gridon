@@ -8,9 +8,9 @@ kabusapiを利用したグリッド戦略
 
 ## 注意事項
 
-このツールはMITライセンスですが、kabuステーションAPIの利用について、第三者が開発したツールの利用は禁じられています
+このツールはMITライセンスですが、kabuステーションAPIの利用について、第三者が開発したツールの利用は禁じられています。そのため、詳しい使い方は明記しません。
 
-そのため、詳しい使い方は明記しません。
+許可なく商用利用することを禁じています。
 
 [https://github.com/tsuchinaga/gridon](https://github.com/tsuchinaga/gridon) にミラーリングしていますが、オリジナルは [https://gitlab.com/tsuchinaga/gridon](https://gitlab.com/tsuchinaga/gridon) にあります。
 
