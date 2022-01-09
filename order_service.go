@@ -163,7 +163,7 @@ func (s *orderService) CancelAll(strategy *Strategy) error {
 					case *kabuspb.RequestError:
 						switch e.Code {
 						case 41, 42, 43, 44, 45, 47: // 指定した注文に対してアクションが起こせない、起こす必要がない場合
-							s.logger.Warning(e)
+							s.logger.Warning(fmt.Errorf("cancel order error(order code = %s):, %w", o.Code, err))
 							continue
 						default:
 							return err
