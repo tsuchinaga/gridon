@@ -2033,3 +2033,34 @@ func Test_orderService_validation(t *testing.T) {
 		})
 	}
 }
+
+func Test_orderService_handleCancelOrderError(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		logger *testLogger
+		arg1   error
+		arg2   string
+		want1  error
+	}{
+		{name: "errがnilならnilを返す",
+			logger: &testLogger{},
+			arg1:   nil,
+			arg2:   "order-code-001",
+			want1:  nil},
+		// それ以外のテストは他の処理でテストしているのでここには書かない
+		// 新たに処理を追加した場合は、ここに追加する
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &orderService{logger: test.logger}
+			got1 := service.handleCancelOrderError(test.arg1, test.arg2)
+			if !errors.Is(got1, test.want1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}

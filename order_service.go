@@ -122,7 +122,9 @@ func (s *orderService) Cancel(strategy *Strategy, orderCode string) error {
 
 	res, err := s.kabusAPI.CancelOrder(strategy.Account.Password, orderCode)
 	if err != nil {
-		return err
+		if err := s.handleCancelOrderError(err, orderCode); err != nil {
+			return err
+		}
 	}
 	if !res.Result {
 		return fmt.Errorf("result=%+v, orderCode=%+v: %w", res, orderCode, ErrCancelCondition)
@@ -151,33 +153,46 @@ func (s *orderService) CancelAll(strategy *Strategy) error {
 	for _, o := range orders {
 		_, err := s.kabusAPI.CancelOrder(strategy.Account.Password, o.Code)
 		if err != nil {
-			if st, ok := status.FromError(err); ok {
-				// 詳細がなければそのままエラーを返す
-				if len(st.Details()) == 0 {
-					return err
-				}
-
-				// 詳細をループする
-				for _, d := range st.Details() {
-					switch e := d.(type) {
-					case *kabuspb.RequestError:
-						switch e.Code {
-						case 41, 42, 43, 44, 45, 47: // 指定した注文に対してアクションが起こせない、起こす必要がない場合
-							s.logger.Warning(fmt.Errorf("cancel order error(order code = %s):, %w", o.Code, err))
-							continue
-						default:
-							return err
-						}
-					default:
-						return err
-					}
-				}
-			} else {
+			if err := s.handleCancelOrderError(err, o.Code); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// handleCancelOrderError - 取消注文のエラーをハンドリングする
+func (s *orderService) handleCancelOrderError(err error, orderCode string) error {
+	if err == nil {
+		return nil
+	}
+
+	if st, ok := status.FromError(err); ok { // grpcのエラーならハンドリング処理に入る
+		// 詳細がなければそのままエラーを返す
+		if len(st.Details()) == 0 {
+			return err
+		}
+
+		// 詳細をループする
+		for _, d := range st.Details() {
+			switch e := d.(type) {
+			case *kabuspb.RequestError:
+				switch e.Code {
+				case 41, 42, 43, 44, 45, 47: // 指定した注文に対してアクションが起こせない、起こす必要がない場合
+					s.logger.Warning(fmt.Errorf("cancel order error(order code = %s):, %w", orderCode, err))
+					continue
+				default:
+					return err
+				}
+			default:
+				return err
+			}
+		}
+
+		return nil // grpcのエラーでここまでこれたら問題になるエラーでないのでnilを返す
+	}
+
+	return err
 }
 
 // ExitAll - 戦略に関連する拘束されていないポジションを全てエグジットする
