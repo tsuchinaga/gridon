@@ -122,9 +122,7 @@ func (s *orderService) Cancel(strategy *Strategy, orderCode string) error {
 
 	res, err := s.kabusAPI.CancelOrder(strategy.Account.Password, orderCode)
 	if err != nil {
-		if err := s.handleCancelOrderError(err, orderCode); err != nil {
-			return err
-		}
+		return s.handleCancelOrderError(err, orderCode)
 	}
 	if !res.Result {
 		return fmt.Errorf("result=%+v, orderCode=%+v: %w", res, orderCode, ErrCancelCondition)

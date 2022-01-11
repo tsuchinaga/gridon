@@ -1388,33 +1388,51 @@ func Test_orderService_ExitLimit(t *testing.T) {
 
 func Test_orderService_Cancel(t *testing.T) {
 	t.Parallel()
+
+	requestErr43St := status.New(codes.Internal, "request 43 status")
+	requestErr43StDt, _ := requestErr43St.WithDetails(&kabuspb.RequestError{Code: 43})
+
 	tests := []struct {
 		name                   string
 		kabusAPI               *testKabusAPI
+		logger                 *testLogger
 		arg1                   *Strategy
 		arg2                   string
 		want1                  error
 		wantCancelOrderHistory []interface{}
+		wantWarningCount       int
 	}{
 		{name: "引数がnilならエラー",
 			kabusAPI: &testKabusAPI{},
+			logger:   &testLogger{},
 			arg1:     nil,
 			arg2:     "order-code-001",
 			want1:    ErrNilArgument},
 		{name: "取消送信に失敗したらエラー",
 			kabusAPI:               &testKabusAPI{CancelOrder2: ErrUnknown},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Account: Account{Password: "Password1234"}},
 			arg2:                   "order-code-001",
 			want1:                  ErrUnknown,
 			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001"}},
+		{name: "取消送信に失敗しても、特定のエラーならログに吐いてnilを返す",
+			kabusAPI:               &testKabusAPI{CancelOrder2: requestErr43StDt.Err()},
+			logger:                 &testLogger{},
+			arg1:                   &Strategy{Account: Account{Password: "Password1234"}},
+			arg2:                   "order-code-001",
+			want1:                  nil,
+			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001"},
+			wantWarningCount:       1},
 		{name: "取消に失敗したらエラー",
 			kabusAPI:               &testKabusAPI{CancelOrder1: OrderResult{Result: false, ResultCode: 4}},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Account: Account{Password: "Password1234"}},
 			arg2:                   "order-code-001",
 			want1:                  ErrCancelCondition,
 			wantCancelOrderHistory: []interface{}{"Password1234", "order-code-001"}},
 		{name: "取消に成功したらnil",
 			kabusAPI:               &testKabusAPI{CancelOrder1: OrderResult{Result: true, ResultCode: 0, OrderCode: "cancel-order-code-001"}},
+			logger:                 &testLogger{},
 			arg1:                   &Strategy{Account: Account{Password: "Password1234"}},
 			arg2:                   "order-code-001",
 			want1:                  nil,
@@ -1425,10 +1443,10 @@ func Test_orderService_Cancel(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			service := &orderService{kabusAPI: test.kabusAPI}
+			service := &orderService{kabusAPI: test.kabusAPI, logger: test.logger}
 			got1 := service.Cancel(test.arg1, test.arg2)
-			if !errors.Is(got1, test.want1) {
-				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			if !errors.Is(got1, test.want1) || !reflect.DeepEqual(test.wantWarningCount, test.logger.WarningCount) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.wantWarningCount, got1, test.logger.WarningCount)
 			}
 		})
 	}
