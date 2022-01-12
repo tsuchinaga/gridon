@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/status"
+
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"google.golang.org/grpc"
@@ -890,7 +892,7 @@ func Test_kabusAPI_GetOrders(t *testing.T) {
 }
 
 func Test_kabusAPI_GetSymbol_Execute(t *testing.T) {
-	t.Skip() // 実際にAPIを叩くテストのため、通常はスキップ
+	t.Skip("実際にAPIを叩くテストのため、通常はスキップ")
 	t.Parallel()
 
 	conn, err := grpc.DialContext(context.Background(), "localhost:18082", grpc.WithInsecure())
@@ -903,7 +905,7 @@ func Test_kabusAPI_GetSymbol_Execute(t *testing.T) {
 }
 
 func Test_kabusAPI_GetOrders_Execute(t *testing.T) {
-	t.Skip() // 実際にAPIを叩くテストのため、通常はスキップ
+	t.Skip("実際にAPIを叩くテストのため、通常はスキップ")
 	t.Parallel()
 
 	conn, err := grpc.DialContext(context.Background(), "localhost:18082", grpc.WithInsecure())
@@ -1433,4 +1435,33 @@ func Test_kabusAPI_priceRangeGroupFrom(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_kabusapi_CancelOrder_Execute(t *testing.T) {
+	t.Skip("実際にAPIを叩くテストのため、通常はスキップ")
+	t.Parallel()
+
+	conn, err := grpc.DialContext(context.Background(), "localhost:18082", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	kabusAPI := &kabusAPI{kabucom: kabuspb.NewKabusServiceClient(conn)}
+	res, err := kabusAPI.CancelOrder("Password1234", "20220111A02N89218703")
+	if err != nil {
+		if st, ok := status.FromError(err); ok { // grpcのエラーならハンドリング処理に入る
+			t.Log("grpc error")
+			for _, d := range st.Details() {
+				t.Log(d)
+				switch e := d.(type) {
+				case *kabuspb.RequestError:
+					t.Log("type is *kabuspb.RequestError", e.Code, e.Message)
+				default:
+					t.Log("type is default")
+				}
+			}
+		} else {
+			t.Fatal(err)
+		}
+	}
+	t.Log(res)
 }

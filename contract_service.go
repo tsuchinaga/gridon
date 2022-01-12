@@ -6,18 +6,20 @@ import (
 )
 
 // newContractService - 新しい約定管理サービスの取得
-func newContractService(kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore) IContractService {
+func newContractService(kabusAPI IKabusAPI, strategyStore IStrategyStore, orderStore IOrderStore, positionStore IPositionStore, clock IClock) IContractService {
 	return &contractService{
 		kabusAPI:      kabusAPI,
 		strategyStore: strategyStore,
 		orderStore:    orderStore,
 		positionStore: positionStore,
+		clock:         clock,
 	}
 }
 
 // IContractService - 約定管理サービスのインターフェース
 type IContractService interface {
 	Confirm(strategy *Strategy) error
+	ConfirmGridEnd(strategy *Strategy) error
 }
 
 // contractService - 約定管理サービス
@@ -26,6 +28,7 @@ type contractService struct {
 	strategyStore IStrategyStore
 	orderStore    IOrderStore
 	positionStore IPositionStore
+	clock         IClock
 }
 
 // Confirm - 約定確認
@@ -46,14 +49,67 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 
 	// kabusapiから最終確認以降に変更された注文の一覧を取得
 	// 約定日時より少し前にキャンセルが入る可能性があるから、1分の猶予を持つようにする
-	updateDatetime := strategy.LastContractDateTime
-	if !updateDatetime.IsZero() {
-		updateDatetime = updateDatetime.Add(-1 * time.Minute)
+	updateDateTime := strategy.LastContractDateTime
+	if !updateDateTime.IsZero() {
+		updateDateTime = updateDateTime.Add(-1 * time.Minute)
 	}
 
-	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.SymbolCode, updateDatetime)
+	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.SymbolCode, updateDateTime)
 	if err != nil {
 		return err
+	}
+
+	return s.confirm(strategy, orders, securityOrders)
+}
+
+// ConfirmGridEnd - グリッド終了時の約定確認
+func (s *contractService) ConfirmGridEnd(strategy *Strategy) error {
+	if strategy == nil {
+		return ErrNilArgument
+	}
+
+	// グリッド戦略が動かないならチェックしない
+	if !strategy.GridStrategy.Runnable {
+		return nil
+	}
+
+	// グリッドの終了タイミングかをチェックし、終了タイミングならそのグリッドの開始時刻を持っておく
+	// グリッドの終了タイミングでなければ終了
+	now := s.clock.Now()
+	var updateDateTime time.Time
+	for _, timeRange := range strategy.GridStrategy.TimeRanges {
+		tr := TimeRange{Start: timeRange.End, End: timeRange.End.Add(1 * time.Minute)}
+		if tr.In(now) {
+			updateDateTime = time.Date(now.Year(), now.Month(), now.Day(), timeRange.Start.Hour(), timeRange.Start.Minute(), timeRange.Start.Second(), timeRange.Start.Nanosecond(), timeRange.Start.Location())
+			break
+		}
+	}
+	if updateDateTime.IsZero() {
+		return nil
+	}
+
+	// 手元にある注文中の注文の一覧を取得
+	//   注文中のデータがなければ約定確認をスキップする
+	orders, err := s.orderStore.GetActiveOrdersByStrategyCode(strategy.Code)
+	if err != nil {
+		return err
+	}
+	if len(orders) < 1 {
+		return nil
+	}
+
+	securityOrders, err := s.kabusAPI.GetOrders(strategy.Product, strategy.SymbolCode, updateDateTime)
+	if err != nil {
+		return err
+	}
+
+	return s.confirm(strategy, orders, securityOrders)
+}
+
+// confirm - 渡された注文情報を使って約定確認を行なう
+func (s *contractService) confirm(strategy *Strategy, storeOrders []*Order, securityOrders []SecurityOrder) error {
+	if strategy == nil {
+		return ErrNilArgument
 	}
 
 	// 両者の差異を確認し、注文やポジションに反映する
@@ -64,7 +120,7 @@ func (s *contractService) Confirm(strategy *Strategy) error {
 	//     エントリーなら注文の更新
 	//     エグジットなら注文の更新(拘束ポジション情報も)、拘束ポジションの解放
 	for _, so := range securityOrders {
-		for _, o := range orders {
+		for _, o := range storeOrders {
 			if so.Code != o.Code || o.IsEqualSecurityOrder(so) { // 違う注文か、同じ注文で内容が一致しているならスキップ
 				continue
 			}
