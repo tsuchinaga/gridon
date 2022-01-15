@@ -31,8 +31,15 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 		return ErrNilArgument
 	}
 
+	now := s.clock.Now()
+
 	// グリッド戦略が無効なら抜ける
-	if !strategy.GridStrategy.IsRunnable(s.clock.Now()) {
+	if !strategy.GridStrategy.IsRunnable(now) {
+		return nil
+	}
+
+	// 取引時間でないなら抜ける
+	if !s.clock.IsTradingTime(now) {
 		return nil
 	}
 

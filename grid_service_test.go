@@ -289,7 +289,9 @@ func Test_gridService_Leveling(t *testing.T) {
 		wantExitLimitHistory  []interface{}
 	}{
 		{name: "引数がnilならエラー",
-			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService:  &testOrderService{},
 			kabusAPI:      &testKabusAPI{},
 			strategyStore: &testStrategyStore{},
@@ -297,7 +299,19 @@ func Test_gridService_Leveling(t *testing.T) {
 			arg1:          nil,
 			want1:         ErrNilArgument},
 		{name: "戦略が実行不可なら何もせず終了",
-			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
+			orderService:  &testOrderService{},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
+			arg1:          &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}},
+			want1:         nil},
+		{name: "取引時間でないなら何もせずに終了",
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 8, 0, 0, 0, time.Local),
+				IsTradingTime1: false},
 			orderService:  &testOrderService{},
 			kabusAPI:      &testKabusAPI{},
 			strategyStore: &testStrategyStore{},
@@ -305,7 +319,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			arg1:          &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}},
 			want1:         nil},
 		{name: "注文一覧の取得に失敗したらエラー",
-			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService:  &testOrderService{GetActiveOrdersByStrategyCode2: ErrUnknown},
 			kabusAPI:      &testKabusAPI{},
 			strategyStore: &testStrategyStore{},
@@ -317,7 +333,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1: ErrUnknown},
 		{name: "基準価格取得に失敗したらエラー",
-			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService:  &testOrderService{GetActiveOrdersByStrategyCode1: []*Order{}},
 			kabusAPI:      &testKabusAPI{GetSymbol2: ErrUnknown},
 			strategyStore: &testStrategyStore{},
@@ -329,7 +347,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1: ErrUnknown},
 		{name: "widthが0ならエラー",
-			clock:         &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService:  &testOrderService{GetActiveOrdersByStrategyCode1: []*Order{}},
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
@@ -341,7 +361,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 			want1: ErrZeroGridWidth},
 		{name: "グリッドの範囲外の注文の取消で失敗したらエラー",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{
 					{Code: "order-code-001", Price: 2112, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
@@ -372,7 +394,9 @@ func Test_gridService_Leveling(t *testing.T) {
 				}},
 				"order-code-001"}},
 		{name: "グリッドに乗っていない注文の取消",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{
 					{Code: "order-code-001", Price: 2101, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
@@ -421,7 +445,9 @@ func Test_gridService_Leveling(t *testing.T) {
 					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 				"order-code-006"}},
 		{name: "グリッドの範囲外の指値注文がなければ取消は実行しない",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{
 					{Code: "order-code-001", Price: 2102, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
@@ -442,7 +468,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			want1:             nil,
 			wantCancelHistory: nil},
 		{name: "グリッド本数が0本の場合、何もせずに終了",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{}},
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
@@ -460,7 +488,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			want1:             nil,
 			wantCancelHistory: nil},
 		{name: "乗せたいグリッドにすでに注文があり、不足分がなければ、注文しない",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{
 					{Code: "order-code-001", Price: 2102, OrderQuantity: 4, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
@@ -487,7 +517,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			}},
 			want1: nil},
 		{name: "グリッド本数が0本の場合、何もせずに終了",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{}},
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
@@ -504,7 +536,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			}},
 			want1: nil},
 		{name: "グリッドに全く注文がなければ、各グリッドに必要数の注文をのせる",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{}},
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
@@ -532,7 +566,9 @@ func Test_gridService_Leveling(t *testing.T) {
 				"strategy-code-001", 2104.0, 4.0, SortOrderNewest,
 			}},
 		{name: "エントリー注文でエラーがでたらエラー",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{},
 				EntryLimit1:                    ErrUnknown},
@@ -555,7 +591,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			wantEntryLimitHistory: []interface{}{"strategy-code-001", 2098.0, 4.0},
 			wantExitLimitHistory:  []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderNewest}},
 		{name: "エグジット注文でエラーがでたらエラー",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{},
 				ExitLimit1:                     ErrUnknown},
@@ -577,7 +615,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			want1:                ErrUnknown,
 			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderNewest}},
 		{name: "乗せたいグリッドにすでに注文があれば、不足分だけを注文する",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{
 					{Code: "order-code-001", Price: 2102, OrderQuantity: 2, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
@@ -604,7 +644,9 @@ func Test_gridService_Leveling(t *testing.T) {
 			want1:                ErrUnknown,
 			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 2.0, SortOrderNewest}},
 		{name: "基準価格のグリッドに注文が残っていたら、隣のグリッドに乗せる数を減らす",
-			clock: &testClock{Now1: time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local)},
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
 			orderService: &testOrderService{
 				GetActiveOrdersByStrategyCode1: []*Order{
 					{Code: "order-code-001", Price: 2100, OrderQuantity: 1, ContractQuantity: 0, ExecutionType: ExecutionTypeLimit},
