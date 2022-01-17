@@ -207,11 +207,26 @@ func (s *gridService) width(strategy *Strategy) (int, error) {
 	case GridTypeStatic:
 		return strategy.GridStrategy.Width, nil
 	case GridTypeDynamicMinMax:
-		return strategy.GridStrategy.DynamicGridMinMax.Width(
-				strategy.GridStrategy.Width,
-				s.tick.Ticks(strategy.TickGroup, strategy.MinContractPrice, strategy.MaxContractPrice)),
-			nil
-	default:
-		return strategy.GridStrategy.Width, nil
+		now := s.clock.Now()
+
+		// 高値と安値が現在のグリッド期間のものでないなら、グリッド幅をそのまま返す
+		for _, tr := range strategy.GridStrategy.TimeRanges {
+			// 現在のグリッド期間でないならスキップ
+			if !tr.In(now) {
+				continue
+			}
+
+			// 現在のグリッド期間に高値か安値のどちらかが入っていなければ約定高値安値の動的グリッドは計算できないため、グリッド幅をそのまま返す
+			if !tr.In(strategy.MinContractDateTime) || !tr.In(strategy.MaxContractDateTime) {
+				return strategy.GridStrategy.Width, nil
+			}
+
+			return strategy.GridStrategy.DynamicGridMinMax.Width(
+					strategy.GridStrategy.Width,
+					s.tick.Ticks(strategy.TickGroup, strategy.MinContractPrice, strategy.MaxContractPrice)),
+				nil
+		}
 	}
+
+	return strategy.GridStrategy.Width, nil
 }
