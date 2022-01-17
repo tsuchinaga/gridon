@@ -685,15 +685,18 @@ func Test_gridService_width(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
+		clock *testClock
 		arg1  *Strategy
 		want1 int
 		want2 error
 	}{
 		{name: "引数がnilならエラー",
+			clock: &testClock{},
 			arg1:  nil,
 			want1: 0,
 			want2: ErrNilArgument},
 		{name: "typeがunspecifiedならwidthをそのまま返す",
+			clock: &testClock{},
 			arg1: &Strategy{
 				GridStrategy: GridStrategy{
 					Width:    2,
@@ -703,6 +706,7 @@ func Test_gridService_width(t *testing.T) {
 			want1: 2,
 			want2: nil},
 		{name: "typeがstaticならwidthをそのまま返す",
+			clock: &testClock{},
 			arg1: &Strategy{
 				GridStrategy: GridStrategy{
 					Width:    2,
@@ -712,10 +716,13 @@ func Test_gridService_width(t *testing.T) {
 			want1: 2,
 			want2: nil},
 		{name: "typeがDynamicMinMaxならwidthを計算して返す",
+			clock: &testClock{Now1: time.Date(2022, 1, 14, 11, 0, 0, 0, time.Local)},
 			arg1: &Strategy{
-				TickGroup:        TickGroupTopix100,
-				MinContractPrice: 18125,
-				MaxContractPrice: 18275,
+				TickGroup:           TickGroupTopix100,
+				MinContractPrice:    18125,
+				MinContractDateTime: time.Date(2022, 1, 14, 10, 0, 0, 0, time.Local),
+				MaxContractPrice:    18275,
+				MaxContractDateTime: time.Date(2022, 1, 14, 9, 10, 0, 0, time.Local),
 				GridStrategy: GridStrategy{
 					Width:    2,
 					GridType: GridTypeDynamicMinMax,
@@ -724,9 +731,85 @@ func Test_gridService_width(t *testing.T) {
 						Rounding:  RoundingCeil,
 						Operation: OperationPlus,
 					},
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					},
 				},
 			},
 			want1: 8,
+			want2: nil},
+		{name: "typeがDynamicMinMaxでも、約定高値と約定安値が現在時刻のグリッドの時間外ならグリッド幅を返す",
+			clock: &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
+			arg1: &Strategy{
+				TickGroup:           TickGroupTopix100,
+				MinContractPrice:    18125,
+				MinContractDateTime: time.Date(2022, 1, 14, 10, 0, 0, 0, time.Local),
+				MaxContractPrice:    18275,
+				MaxContractDateTime: time.Date(2022, 1, 14, 9, 10, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Width:    2,
+					GridType: GridTypeDynamicMinMax,
+					DynamicGridMinMax: DynamicGridMinMax{
+						Divide:    5,
+						Rounding:  RoundingCeil,
+						Operation: OperationPlus,
+					},
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					},
+				},
+			},
+			want1: 2,
+			want2: nil},
+		{name: "typeがDynamicMinMaxでも、約定高値が現在時刻のグリッドの時間外ならグリッド幅を返す",
+			clock: &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
+			arg1: &Strategy{
+				TickGroup:           TickGroupTopix100,
+				MinContractPrice:    18125,
+				MinContractDateTime: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local),
+				MaxContractPrice:    18275,
+				MaxContractDateTime: time.Date(2022, 1, 14, 9, 10, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Width:    2,
+					GridType: GridTypeDynamicMinMax,
+					DynamicGridMinMax: DynamicGridMinMax{
+						Divide:    5,
+						Rounding:  RoundingCeil,
+						Operation: OperationPlus,
+					},
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					},
+				},
+			},
+			want1: 2,
+			want2: nil},
+		{name: "typeがDynamicMinMaxでも、約定安値が現在時刻のグリッドの時間外ならグリッド幅を返す",
+			clock: &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
+			arg1: &Strategy{
+				TickGroup:           TickGroupTopix100,
+				MinContractPrice:    18125,
+				MinContractDateTime: time.Date(2022, 1, 14, 9, 10, 0, 0, time.Local),
+				MaxContractPrice:    18275,
+				MaxContractDateTime: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local),
+				GridStrategy: GridStrategy{
+					Width:    2,
+					GridType: GridTypeDynamicMinMax,
+					DynamicGridMinMax: DynamicGridMinMax{
+						Divide:    5,
+						Rounding:  RoundingCeil,
+						Operation: OperationPlus,
+					},
+					TimeRanges: []TimeRange{
+						{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)},
+						{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
+					},
+				},
+			},
+			want1: 2,
 			want2: nil},
 	}
 
@@ -734,7 +817,7 @@ func Test_gridService_width(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			service := &gridService{tick: &tick{}}
+			service := &gridService{tick: &tick{}, clock: test.clock}
 			got1, got2 := service.width(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
