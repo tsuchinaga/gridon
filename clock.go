@@ -12,6 +12,7 @@ func newClock() IClock {
 type IClock interface {
 	Now() time.Time
 	NextMinuteDuration(now time.Time) time.Duration
+	IsTradingTime(now time.Time) bool
 }
 
 type clock struct{}
@@ -24,4 +25,19 @@ func (c *clock) Now() time.Time {
 func (c *clock) NextMinuteDuration(now time.Time) time.Duration {
 	nextTime := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute()+1, 0, 0, now.Location())
 	return nextTime.Sub(now)
+}
+
+// IsTradingTime - 取引可能時刻かを返す
+func (c *clock) IsTradingTime(now time.Time) bool {
+	nowTime := time.Date(0, 1, 1, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location())
+
+	morningStart := time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)
+	morningEnd := time.Date(0, 1, 1, 11, 30, 0, 0, time.Local)
+	if !nowTime.Before(morningStart) && !nowTime.After(morningEnd) {
+		return true
+	}
+
+	afternoonStart := time.Date(0, 1, 1, 12, 30, 0, 0, time.Local)
+	afternoonEnd := time.Date(0, 1, 1, 15, 0, 0, 0, time.Local)
+	return !nowTime.Before(afternoonStart) && !nowTime.After(afternoonEnd)
 }

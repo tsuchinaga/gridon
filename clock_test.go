@@ -10,10 +10,12 @@ type testClock struct {
 	IClock
 	Now1                time.Time
 	NextMinuteDuration1 time.Duration
+	IsTradingTime1      bool
 }
 
 func (t *testClock) Now() time.Time                             { return t.Now1 }
 func (t *testClock) NextMinuteDuration(time.Time) time.Duration { return t.NextMinuteDuration1 }
+func (t *testClock) IsTradingTime(time.Time) bool               { return t.IsTradingTime1 }
 
 func Test_clock_Now(t *testing.T) {
 	t.Parallel()
@@ -61,6 +63,55 @@ func Test_clock_NextMinuteDuration(t *testing.T) {
 			t.Parallel()
 			clock := &clock{}
 			got1 := clock.NextMinuteDuration(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_clock_IsTradingTime(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		arg1  time.Time
+		want1 bool
+	}{
+		{name: "09:00より前ならfalse",
+			arg1:  time.Date(2022, 1, 14, 8, 59, 0, 0, time.Local),
+			want1: false},
+		{name: "09:00ならtrue",
+			arg1:  time.Date(2022, 1, 14, 9, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "09:00-11:30ならtrue",
+			arg1:  time.Date(2022, 1, 14, 10, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "11:30ならtrue",
+			arg1:  time.Date(2022, 1, 14, 11, 30, 0, 0, time.Local),
+			want1: true},
+		{name: "11:30-12:30ならfalse",
+			arg1:  time.Date(2022, 1, 14, 12, 0, 0, 0, time.Local),
+			want1: false},
+		{name: "12:30ならtrue",
+			arg1:  time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local),
+			want1: true},
+		{name: "12:30-15:00ならtrue",
+			arg1:  time.Date(2022, 1, 14, 14, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "15:00ならtrue",
+			arg1:  time.Date(2022, 1, 14, 15, 0, 0, 0, time.Local),
+			want1: true},
+		{name: "15:00より後ならfalse",
+			arg1:  time.Date(2022, 1, 14, 15, 10, 0, 0, time.Local),
+			want1: false},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			clock := &clock{}
+			got1 := clock.IsTradingTime(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
 			}
