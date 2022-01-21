@@ -30,6 +30,9 @@ func (s *gridService) Leveling(strategy *Strategy) error {
 	if strategy == nil {
 		return ErrNilArgument
 	}
+	if !strategy.IsRunnable() {
+		return nil
+	}
 
 	now := s.clock.Now()
 
