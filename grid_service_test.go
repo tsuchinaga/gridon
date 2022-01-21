@@ -308,7 +308,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1:          &Strategy{Code: "strategy-code-001", Runnable: false},
 			want1:         nil},
-		{name: "戦略が実行不可なら何もせず終了",
+		{name: "グリッド戦略が実行不可なら何もせず終了",
 			clock: &testClock{
 				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
 				IsTradingTime1: true},
@@ -320,14 +320,21 @@ func Test_gridService_Leveling(t *testing.T) {
 			want1:         nil},
 		{name: "取引時間でないなら何もせずに終了",
 			clock: &testClock{
-				Now1:           time.Date(2021, 11, 5, 8, 0, 0, 0, time.Local),
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
 				IsTradingTime1: false},
 			orderService:  &testOrderService{},
 			kabusAPI:      &testKabusAPI{},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1:          &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}, Runnable: true},
-			want1:         nil},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
+			want1: nil},
 		{name: "注文一覧の取得に失敗したらエラー",
 			clock: &testClock{
 				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
