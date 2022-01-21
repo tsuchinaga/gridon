@@ -19,21 +19,25 @@ import (
 
 type testKabusAPI struct {
 	IKabusAPI
-	GetOrders1         []SecurityOrder
-	GetOrders2         error
-	GetOrdersCount     int
-	GetOrdersHistory   []interface{}
-	CancelOrder1       OrderResult
-	CancelOrder2       error
-	CancelOrderHistory []interface{}
-	SendOrder1         OrderResult
-	SendOrder2         error
-	SendOrderCount     int
-	SendOrderHistory   []interface{}
-	GetSymbol1         *Symbol
-	GetSymbol2         error
-	GetSymbolCount     int
-	GetSymbolHistory   []interface{}
+	GetOrders1          []SecurityOrder
+	GetOrders2          error
+	GetOrdersCount      int
+	GetOrdersHistory    []interface{}
+	CancelOrder1        OrderResult
+	CancelOrder2        error
+	CancelOrderHistory  []interface{}
+	SendOrder1          OrderResult
+	SendOrder2          error
+	SendOrderCount      int
+	SendOrderHistory    []interface{}
+	GetSymbol1          *Symbol
+	GetSymbol2          error
+	GetSymbolCount      int
+	GetSymbolHistory    []interface{}
+	GetFourPrice1       *FourPrice
+	GetFourPrice2       error
+	GetFourPriceCount   int
+	GetFourPriceHistory []interface{}
 }
 
 func (t *testKabusAPI) GetSymbol(symbolCode string, exchange Exchange) (*Symbol, error) {
@@ -59,6 +63,12 @@ func (t *testKabusAPI) SendOrder(strategy *Strategy, order *Order) (OrderResult,
 	t.SendOrderHistory = append(t.SendOrderHistory, order)
 	t.SendOrderCount++
 	return t.SendOrder1, t.SendOrder2
+}
+func (t *testKabusAPI) GetFourPrice(symbolCode string, exchange Exchange) (*FourPrice, error) {
+	t.GetFourPriceCount++
+	t.GetFourPriceHistory = append(t.GetFourPriceHistory, symbolCode)
+	t.GetFourPriceHistory = append(t.GetFourPriceHistory, exchange)
+	return t.GetFourPrice1, t.GetFourPrice2
 }
 
 type testKabusServiceClient struct {
@@ -1464,4 +1474,70 @@ func Test_kabusapi_CancelOrder_Execute(t *testing.T) {
 		}
 	}
 	t.Log(res)
+}
+
+func Test_kabusAPI_GetFourPrice_Execute(t *testing.T) {
+	t.Skip("実際にAPIを叩くテストのため、通常はスキップ")
+	t.Parallel()
+
+	conn, err := grpc.DialContext(context.Background(), "localhost:18082", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	kabusAPI := &kabusAPI{kabucom: kabuspb.NewKabusServiceClient(conn)}
+	symbol, err := kabusAPI.GetFourPrice("1699", ExchangeToushou)
+	t.Logf("symbol: %+v, err: %+v\n", symbol, err)
+}
+
+func Test_kabusAPI_GetFourPrice(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		kabucom *testKabusServiceClient
+		arg1    string
+		arg2    Exchange
+		want1   *FourPrice
+		want2   error
+	}{
+		{name: "板情報の取得がエラーになったらエラーを返す",
+			kabucom: &testKabusServiceClient{GetBoard2: ErrUnknown},
+			arg1:    "1475",
+			arg2:    ExchangeToushou,
+			want1:   nil,
+			want2:   ErrUnknown},
+		{name: "板情報をFourPriceに詰めて返す",
+			kabucom: &testKabusServiceClient{GetBoard1: &kabuspb.Board{
+				SymbolCode:       "1475",
+				Exchange:         kabuspb.Exchange_EXCHANGE_TOUSHOU,
+				CurrentPrice:     238,
+				CurrentPriceTime: timestamppb.New(time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local)),
+				OpeningPrice:     241.9,
+				HighPrice:        242.4,
+				LowPrice:         238,
+			}},
+			arg1: "1475",
+			arg2: ExchangeToushou,
+			want1: &FourPrice{
+				SymbolCode: "1475",
+				Exchange:   ExchangeToushou,
+				DateTime:   time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local),
+				Open:       241.9,
+				High:       242.4,
+				Low:        238,
+				Close:      238,
+			},
+			want2: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			kabusapi := &kabusAPI{kabucom: test.kabucom}
+			got1, got2 := kabusapi.GetFourPrice(test.arg1, test.arg2)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
+			}
+		})
+	}
 }

@@ -482,3 +482,54 @@ func Test_service_startWebServerTask(t *testing.T) {
 		})
 	}
 }
+
+func Test_service_dailyTask(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                   string
+		strategyStore          *testStrategyStore
+		priceService           *testPriceService
+		logger                 *testLogger
+		wantSaveFourPriceCount int
+		wantWarningCount       int
+	}{
+		{name: "戦略一覧の取得に失敗したらログを吐いて終了",
+			strategyStore:    &testStrategyStore{GetStrategies2: ErrUnknown},
+			priceService:     &testPriceService{},
+			logger:           &testLogger{},
+			wantWarningCount: 1},
+		{name: "四本値の保存に失敗したらログを吐いて終了",
+			strategyStore:          &testStrategyStore{GetStrategies1: []*Strategy{{SymbolCode: "1475", Exchange: ExchangeToushou}}},
+			priceService:           &testPriceService{SaveFourPrice1: ErrUnknown},
+			logger:                 &testLogger{},
+			wantSaveFourPriceCount: 1,
+			wantWarningCount:       1},
+		{name: "四本値の保存でエラーがなければそのまま終了",
+			strategyStore: &testStrategyStore{GetStrategies1: []*Strategy{
+				{SymbolCode: "1475", Exchange: ExchangeToushou},
+				{SymbolCode: "1476", Exchange: ExchangeToushou},
+			}},
+			priceService:           &testPriceService{SaveFourPrice1: nil},
+			logger:                 &testLogger{},
+			wantSaveFourPriceCount: 2,
+			wantWarningCount:       0},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &service{
+				logger:        test.logger,
+				strategyStore: test.strategyStore,
+				priceService:  test.priceService}
+			service.dailyTask()
+			if !reflect.DeepEqual(test.wantSaveFourPriceCount, test.priceService.SaveFourPriceCount) ||
+				!reflect.DeepEqual(test.wantWarningCount, test.logger.WarningCount) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(),
+					test.wantSaveFourPriceCount, test.wantWarningCount,
+					test.wantWarningCount, test.logger.WarningCount)
+			}
+		})
+	}
+}

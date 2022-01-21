@@ -148,3 +148,14 @@ func (e *Position) IsActive() bool {
 func (e *Position) LeaveQuantity() float64 {
 	return e.OwnedQuantity - e.HoldQuantity
 }
+
+// FourPrice - 四本値
+type FourPrice struct {
+	SymbolCode string    // 銘柄コード
+	Exchange   Exchange  // 市場
+	DateTime   time.Time // 日付
+	Open       float64   // 始値
+	High       float64   // 高値
+	Low        float64   // 安値
+	Close      float64   // 終値
+}

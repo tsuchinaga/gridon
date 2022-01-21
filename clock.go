@@ -12,6 +12,7 @@ func newClock() IClock {
 type IClock interface {
 	Now() time.Time
 	NextMinuteDuration(now time.Time) time.Duration
+	NextAfternoonClosingDuration(now time.Time) time.Duration
 	IsTradingTime(now time.Time) bool
 }
 
@@ -25,6 +26,15 @@ func (c *clock) Now() time.Time {
 func (c *clock) NextMinuteDuration(now time.Time) time.Duration {
 	nextTime := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute()+1, 0, 0, now.Location())
 	return nextTime.Sub(now)
+}
+
+// NextAfternoonClosingDuration - 次の後場引け(15:00)までのDurationを返す
+func (c *clock) NextAfternoonClosingDuration(now time.Time) time.Duration {
+	today1500 := time.Date(now.Year(), now.Month(), now.Day(), 15, 0, 0, 0, time.Local)
+	if today1500.After(now) {
+		return today1500.Sub(now)
+	}
+	return today1500.AddDate(0, 0, 1).Sub(now)
 }
 
 // IsTradingTime - 取引可能時刻かを返す

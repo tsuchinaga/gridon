@@ -31,6 +31,7 @@ func NewService() (IService, error) {
 	strategyStore := getStrategyStore(db, logger)
 	orderStore := getOrderStore(db)
 	positionStore := getPositionStore(db)
+	fourPriceStore := getFourPriceStore(db)
 	kabusAPI := newKabusAPI(kabucom)
 
 	return &service{
@@ -82,6 +83,9 @@ func NewService() (IService, error) {
 			":18083",
 			strategyStore,
 			kabusAPI),
+		priceService: newPriceService(
+			kabusAPI,
+			fourPriceStore),
 	}, nil
 }
 
@@ -103,6 +107,7 @@ type service struct {
 	orderService       IOrderService
 	strategyService    IStrategyService
 	webService         IWebService
+	priceService       IPriceService
 	contractRunning    bool
 	contractRunningMtx sync.Mutex
 	orderRunning       bool
@@ -132,6 +137,9 @@ func (s *service) Start() error {
 
 	// 注文に関するスケジューラの起動 (リバランス、グリッド、全エグジット)
 	go s.orderScheduler()
+
+	// 日次で実行するスケジューラの起動 (四本値の保存)
+	go s.dailyScheduler()
 
 	select {}
 }
@@ -198,6 +206,7 @@ func (s *service) contractTask() {
 	strategies, err := s.strategyStore.GetStrategies()
 	if err != nil {
 		s.logger.Warning(fmt.Errorf("約定確認処理の戦略一覧取得でエラーが発生しました: %w", err))
+		return
 	}
 
 	// 約定確認の実行
@@ -267,9 +276,9 @@ func (s *service) orderTask() {
 	strategies, err := s.strategyStore.GetStrategies()
 	if err != nil {
 		s.logger.Warning(fmt.Errorf("注文処理の戦略一覧取得でエラーが発生しました: %w", err))
+		return
 	}
 
-	// rebalanceの実行
 	var wg sync.WaitGroup
 	for _, strategy := range strategies {
 		strategy := strategy
@@ -277,6 +286,7 @@ func (s *service) orderTask() {
 		go func() {
 			defer wg.Done()
 
+			// rebalanceの実行
 			if err := s.rebalanceService.Rebalance(strategy); err != nil {
 				s.logger.Warning(fmt.Errorf("%s のリバランス処理でエラーが発生しました: %w", strategy.Code, err))
 			}
@@ -287,6 +297,41 @@ func (s *service) orderTask() {
 
 			if err := s.orderService.ExitAll(strategy); err != nil {
 				s.logger.Warning(fmt.Errorf("%s の全エグジット処理でエラーが発生しました: %w", strategy.Code, err))
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+// dailyScheduler - 日次スケジューラ
+func (s *service) dailyScheduler() {
+	s.logger.Notice("日次スケジューラ起動")
+
+	// 引け後に1回非同期で処理を実行する
+	for {
+		<-time.After(s.clock.NextAfternoonClosingDuration(s.clock.Now()) + 1*time.Minute) // 後場引けの1分後に動き出すようにする
+		go s.dailyTask()
+	}
+}
+
+// dailyTask - 日次のタスク
+func (s *service) dailyTask() {
+	// 戦略一覧の取得
+	strategies, err := s.strategyStore.GetStrategies()
+	if err != nil {
+		s.logger.Warning(fmt.Errorf("日次処理の戦略一覧取得でエラーが発生しました: %w", err))
+		return
+	}
+
+	var wg sync.WaitGroup
+	for _, strategy := range strategies {
+		strategy := strategy
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := s.priceService.SaveFourPrice(strategy.SymbolCode, strategy.Exchange); err != nil {
+				s.logger.Warning(fmt.Errorf("%s の四本値保存処理でエラーが発生しました: %w", strategy.Code, err))
 			}
 		}()
 	}
