@@ -54,6 +54,9 @@ func openDB(path string) (*genji.DB, error) {
 		// positions
 		`create table if not exists positions`,
 		`create unique index if not exists positions_code on positions (code)`,
+		// four_prices
+		`create table if not exists four_prices`,
+		`create unique index if not exists four_prices_symbolcode_exchange_datetime on four_prices (symbolcode, exchange, datetime)`,
 	}
 
 	for _, sql := range sqlList {
@@ -76,6 +79,8 @@ type IDB interface {
 	SavePosition(position *Position) error
 	CleanupOrders() error
 	CleanupPositions() error
+	GetFourPriceBySymbolCodeAndExchange(symbolCode string, exchange Exchange, num int) ([]*FourPrice, error)
+	SaveFourPrice(fourPrice *FourPrice) error
 }
 
 // db - データベース
@@ -269,5 +274,55 @@ func (d *db) CleanupPositions() error {
 		return err
 	}
 
+	return nil
+}
+
+// GetFourPriceBySymbolCodeAndExchange - 四本値を銘柄検索し、後ろからnum本取得する
+func (d *db) GetFourPriceBySymbolCodeAndExchange(symbolCode string, exchange Exchange, num int) ([]*FourPrice, error) {
+	res, err := d.db.Query(fmt.Sprintf(`select * from four_prices where symbolcode = ? and exchange = ? order by datetime desc limit %d`, num),
+		symbolCode, exchange)
+	if err != nil {
+		return nil, d.wrapErr(err)
+	}
+	defer res.Close()
+
+	result := make([]*FourPrice, 0)
+	err = res.Iterate(func(d types.Document) error {
+		var fourPrice FourPrice
+		if err := document.StructScan(d, &fourPrice); err != nil {
+			return err
+		}
+		result = append(result, &fourPrice)
+		return nil
+	})
+	if err != nil {
+		return nil, d.wrapErr(err)
+	}
+	return result, nil
+}
+
+// SaveFourPrice - 四本値の保存
+func (d *db) SaveFourPrice(fourPrice *FourPrice) error {
+	d.logger.Notice(fmt.Sprintf("save fourPrice: %+v", fourPrice))
+
+	tx, err := d.db.Begin(true)
+	if err != nil {
+		return d.wrapErr(err)
+	}
+
+	if err := tx.Exec(`delete from four_prices where symbolcode = ? and exchange = ? and datetime = ?`,
+		fourPrice.SymbolCode, fourPrice.Exchange, fourPrice.DateTime); err != nil {
+		_ = tx.Rollback()
+		d.logger.Warning(err)
+		return d.wrapErr(err)
+	}
+
+	if err := tx.Exec(`insert into four_prices values ?`, fourPrice); err != nil {
+		_ = tx.Rollback()
+		d.logger.Warning(err)
+		return d.wrapErr(err)
+	}
+
+	_ = tx.Commit()
 	return nil
 }

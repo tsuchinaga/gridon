@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/types"
@@ -11,26 +12,33 @@ import (
 
 type testDB struct {
 	IDB
-	SaveStrategy1               error
-	SaveStrategyCount           int
-	SaveStrategyHistory         []interface{}
-	DeleteStrategyByCode1       error
-	DeleteStrategyByCodeCount   int
-	DeleteStrategyByCodeHistory []interface{}
-	SaveOrder1                  error
-	SaveOrderCount              int
-	SaveOrderHistory            []interface{}
-	SavePosition1               error
-	SavePositionCount           int
-	SavePositionHistory         []interface{}
-	GetStrategies1              []*Strategy
-	GetStrategies2              error
-	GetActiveOrders1            []*Order
-	GetActiveOrders2            error
-	GetActivePositions1         []*Position
-	GetActivePositions2         error
-	CleanupOrders1              error
-	CleanupPositions1           error
+	SaveStrategy1                              error
+	SaveStrategyCount                          int
+	SaveStrategyHistory                        []interface{}
+	DeleteStrategyByCode1                      error
+	DeleteStrategyByCodeCount                  int
+	DeleteStrategyByCodeHistory                []interface{}
+	SaveOrder1                                 error
+	SaveOrderCount                             int
+	SaveOrderHistory                           []interface{}
+	SavePosition1                              error
+	SavePositionCount                          int
+	SavePositionHistory                        []interface{}
+	GetStrategies1                             []*Strategy
+	GetStrategies2                             error
+	GetActiveOrders1                           []*Order
+	GetActiveOrders2                           error
+	GetActivePositions1                        []*Position
+	GetActivePositions2                        error
+	CleanupOrders1                             error
+	CleanupPositions1                          error
+	GetFourPriceBySymbolCodeAndExchange1       []*FourPrice
+	GetFourPriceBySymbolCodeAndExchange2       error
+	GetFourPriceBySymbolCodeAndExchangeCount   int
+	GetFourPriceBySymbolCodeAndExchangeHistory []interface{}
+	SaveFourPrice1                             error
+	SaveFourPriceCount                         int
+	SaveFourPriceHistory                       []interface{}
 }
 
 func (t *testDB) GetStrategies() ([]*Strategy, error) {
@@ -64,6 +72,18 @@ func (t *testDB) SavePosition(position *Position) error {
 }
 func (t *testDB) CleanupOrders() error    { return t.CleanupOrders1 }
 func (t *testDB) CleanupPositions() error { return t.CleanupPositions1 }
+func (t *testDB) GetFourPriceBySymbolCodeAndExchange(symbolCode string, exchange Exchange, num int) ([]*FourPrice, error) {
+	t.GetFourPriceBySymbolCodeAndExchangeCount++
+	t.GetFourPriceBySymbolCodeAndExchangeHistory = append(t.GetFourPriceBySymbolCodeAndExchangeHistory, symbolCode)
+	t.GetFourPriceBySymbolCodeAndExchangeHistory = append(t.GetFourPriceBySymbolCodeAndExchangeHistory, exchange)
+	t.GetFourPriceBySymbolCodeAndExchangeHistory = append(t.GetFourPriceBySymbolCodeAndExchangeHistory, num)
+	return t.GetFourPriceBySymbolCodeAndExchange1, t.GetFourPriceBySymbolCodeAndExchange2
+}
+func (t *testDB) SaveFourPrice(fourPrice *FourPrice) error {
+	t.SaveFourPriceCount++
+	t.SaveFourPriceHistory = append(t.SaveFourPriceHistory, fourPrice)
+	return t.SaveFourPrice1
+}
 
 func Test_db_SaveStrategy(t *testing.T) {
 	t.Parallel()
@@ -659,6 +679,167 @@ func Test_db_DeleteStrategyByCode(t *testing.T) {
 
 			if !reflect.DeepEqual(test.wantStrategies, strategies) || !errors.Is(got, test.want) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantStrategies, got, strategies)
+			}
+		})
+	}
+}
+
+func Test_db_SaveFourPrice(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name           string
+		logger         *testLogger
+		dataset        []*FourPrice
+		arg            *FourPrice
+		want           error
+		wantFourPrices []*FourPrice
+	}{
+		{name: "同じコードのデータがなければinsertされる",
+			logger: &testLogger{},
+			dataset: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 17, 15, 0, 0, 0, time.Local), Open: 2043, High: 2055, Low: 2038, Close: 2040},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 18, 15, 0, 0, 0, time.Local), Open: 2050, High: 2060, Low: 2022, Close: 2033},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1993},
+			},
+			arg:  &FourPrice{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local), Open: 1966, High: 1985, Low: 1952, Close: 1981},
+			want: nil,
+			wantFourPrices: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 17, 15, 0, 0, 0, time.Local), Open: 2043, High: 2055, Low: 2038, Close: 2040},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 18, 15, 0, 0, 0, time.Local), Open: 2050, High: 2060, Low: 2022, Close: 2033},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1993},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local), Open: 1966, High: 1985, Low: 1952, Close: 1981},
+			}},
+		{name: "同じコードのデータがあったら上書きされる",
+			logger: &testLogger{},
+			dataset: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 17, 15, 0, 0, 0, time.Local), Open: 2043, High: 2055, Low: 2038, Close: 2040},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 18, 15, 0, 0, 0, time.Local), Open: 2050, High: 2060, Low: 2022, Close: 2033},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1993},
+			},
+			arg:  &FourPrice{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1990},
+			want: nil,
+			wantFourPrices: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 17, 15, 0, 0, 0, time.Local), Open: 2043, High: 2055, Low: 2038, Close: 2040},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 18, 15, 0, 0, 0, time.Local), Open: 2050, High: 2060, Low: 2022, Close: 2033},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1990},
+			}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			d, _ := openDB(":memory:")
+			defer d.Close()
+			for _, data := range test.dataset {
+				if err := d.Exec(`insert into four_prices values ?`, data); err != nil {
+					t.Errorf("%s insert error\n%+v\n", t.Name(), err)
+				}
+			}
+
+			db := &db{db: d, logger: test.logger}
+			got := db.SaveFourPrice(test.arg)
+
+			fourPrices := make([]*FourPrice, 0)
+			res, _ := d.Query("select * from four_prices order by code")
+			defer res.Close()
+			_ = res.Iterate(func(d types.Document) error {
+				var fourPrice FourPrice
+				_ = document.StructScan(d, &fourPrice)
+				fourPrices = append(fourPrices, &fourPrice)
+				return nil
+			})
+
+			if !reflect.DeepEqual(test.wantFourPrices, fourPrices) || !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantFourPrices, got, fourPrices)
+			}
+		})
+	}
+}
+
+func Test_db_GetFourPriceBySymbolCodeAndExchange(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		dataset []*FourPrice
+		arg1    string
+		arg2    Exchange
+		arg3    int
+		want1   []*FourPrice
+		want2   error
+	}{
+		{name: "データがなければ空スライスを返す",
+			dataset: []*FourPrice{},
+			arg1:    "1475",
+			arg2:    ExchangeToushou,
+			arg3:    3,
+			want1:   []*FourPrice{},
+			want2:   nil},
+		{name: "データがあればFourPriceに詰めてスライスに入れて返す",
+			dataset: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 17, 15, 0, 0, 0, time.Local), Open: 2043, High: 2055, Low: 2038, Close: 2040},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 18, 15, 0, 0, 0, time.Local), Open: 2050, High: 2060, Low: 2022, Close: 2033},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1993},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local), Open: 1966, High: 1985, Low: 1952, Close: 1981},
+			},
+			arg1: "1475",
+			arg2: ExchangeToushou,
+			arg3: 3,
+			want1: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local), Open: 1966, High: 1985, Low: 1952, Close: 1981},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1993},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+			},
+			want2: nil},
+		{name: "引数に該当するデータがなければ空配列",
+			dataset: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 17, 15, 0, 0, 0, time.Local), Open: 2043, High: 2055, Low: 2038, Close: 2040},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 18, 15, 0, 0, 0, time.Local), Open: 2050, High: 2060, Low: 2022, Close: 2033},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1993},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local), Open: 1966, High: 1985, Low: 1952, Close: 1981},
+			},
+			arg1:  "1476",
+			arg2:  ExchangeToushou,
+			arg3:  3,
+			want1: []*FourPrice{},
+			want2: nil},
+		{name: "limitが0なら空配列",
+			dataset: []*FourPrice{
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 17, 15, 0, 0, 0, time.Local), Open: 2043, High: 2055, Low: 2038, Close: 2040},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 18, 15, 0, 0, 0, time.Local), Open: 2050, High: 2060, Low: 2022, Close: 2033},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 19, 15, 0, 0, 0, time.Local), Open: 1999, High: 2010, Low: 1966, Close: 1973},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 20, 15, 0, 0, 0, time.Local), Open: 1969, High: 2000, Low: 1960, Close: 1993},
+				{SymbolCode: "1475", Exchange: ExchangeToushou, DateTime: time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local), Open: 1966, High: 1985, Low: 1952, Close: 1981},
+			},
+			arg1:  "1475",
+			arg2:  ExchangeToushou,
+			arg3:  0,
+			want1: []*FourPrice{},
+			want2: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			d, _ := openDB(":memory:")
+			defer d.Close()
+			for _, data := range test.dataset {
+				if err := d.Exec(`insert into four_prices values ?`, data); err != nil {
+					t.Errorf("%s insert error\n%+v\n", t.Name(), err)
+				}
+			}
+
+			store := &db{db: d}
+			got1, got2 := store.GetFourPriceBySymbolCodeAndExchange(test.arg1, test.arg2, test.arg3)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
 		})
 	}

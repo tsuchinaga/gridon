@@ -19,6 +19,7 @@ type IKabusAPI interface {
 	GetOrders(product Product, symbolCode string, updateDateTime time.Time) ([]SecurityOrder, error)
 	CancelOrder(orderPassword string, orderCode string) (OrderResult, error)
 	SendOrder(strategy *Strategy, order *Order) (OrderResult, error)
+	GetFourPrice(symbolCode string, exchange Exchange) (*FourPrice, error)
 }
 
 // kabusAPI - kabuステーションAPI
@@ -383,4 +384,22 @@ func (k *kabusAPI) priceRangeGroupFrom(priceRangeGroup string) TickGroup {
 	default:
 		return TickGroupUnspecified
 	}
+}
+
+// GetFourPrice - 四本値の取得
+func (k *kabusAPI) GetFourPrice(symbolCode string, exchange Exchange) (*FourPrice, error) {
+	board, err := k.kabucom.GetBoard(context.Background(), &kabuspb.GetBoardRequest{SymbolCode: symbolCode, Exchange: k.exchangeTo(exchange)})
+	if err != nil {
+		return nil, err
+	}
+
+	return &FourPrice{
+		SymbolCode: symbolCode,
+		Exchange:   exchange,
+		DateTime:   board.CurrentPriceTime.AsTime().In(time.Local),
+		Open:       board.OpeningPrice,
+		High:       board.HighPrice,
+		Low:        board.LowPrice,
+		Close:      board.CurrentPrice,
+	}, nil
 }

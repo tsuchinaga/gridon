@@ -3,7 +3,6 @@ package gridon
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net"
 	"net/http"
 )
@@ -118,7 +117,6 @@ func (s *webService) postSaveStrategy(w http.ResponseWriter, req *http.Request) 
 
 	strategy := &Strategy{}
 	if err := json.NewDecoder(req.Body).Decode(strategy); err != nil && err != io.EOF {
-		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

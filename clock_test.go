@@ -8,14 +8,18 @@ import (
 
 type testClock struct {
 	IClock
-	Now1                time.Time
-	NextMinuteDuration1 time.Duration
-	IsTradingTime1      bool
+	Now1                          time.Time
+	NextMinuteDuration1           time.Duration
+	NextAfternoonClosingDuration1 time.Duration
+	IsTradingTime1                bool
 }
 
 func (t *testClock) Now() time.Time                             { return t.Now1 }
 func (t *testClock) NextMinuteDuration(time.Time) time.Duration { return t.NextMinuteDuration1 }
-func (t *testClock) IsTradingTime(time.Time) bool               { return t.IsTradingTime1 }
+func (t *testClock) NextAfternoonClosingDuration(time.Time) time.Duration {
+	return t.NextAfternoonClosingDuration1
+}
+func (t *testClock) IsTradingTime(time.Time) bool { return t.IsTradingTime1 }
 
 func Test_clock_Now(t *testing.T) {
 	t.Parallel()
@@ -112,6 +116,37 @@ func Test_clock_IsTradingTime(t *testing.T) {
 			t.Parallel()
 			clock := &clock{}
 			got1 := clock.IsTradingTime(test.arg1)
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}
+
+func Test_clock_NextAfternoonClosingDuration(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		arg1  time.Time
+		want1 time.Duration
+	}{
+		{name: "15:00以前ならの当日の15:00までの時間を返す",
+			arg1:  time.Date(2022, 1, 21, 14, 0, 0, 0, time.Local),
+			want1: 1 * time.Hour},
+		{name: "丁度15:00なら翌日の15:00までの時間を返す",
+			arg1:  time.Date(2022, 1, 21, 15, 0, 0, 0, time.Local),
+			want1: 24 * time.Hour},
+		{name: "15:00以降なら翌日の15:00までの時間を返す",
+			arg1:  time.Date(2022, 1, 21, 16, 0, 0, 0, time.Local),
+			want1: 23 * time.Hour},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			clock := &clock{}
+			got1 := clock.NextAfternoonClosingDuration(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
 			}
