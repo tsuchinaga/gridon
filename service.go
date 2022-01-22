@@ -68,7 +68,8 @@ func NewService() (IService, error) {
 				orderStore,
 				positionStore,
 				logger),
-			strategyStore),
+			strategyStore,
+			fourPriceStore),
 		orderService: newOrderService(
 			newClock(),
 			kabusAPI,

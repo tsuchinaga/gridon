@@ -374,7 +374,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
-				Width:         2,
+				BaseWidth:     2,
 				Quantity:      4,
 				NumberOfGrids: 5,
 				TimeRanges: []TimeRange{{
@@ -385,7 +385,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			wantCancelHistory: []interface{}{
 				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges: []TimeRange{{
@@ -410,7 +410,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
-				Width:         2,
+				BaseWidth:     2,
 				Quantity:      4,
 				NumberOfGrids: 5,
 				TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
@@ -418,28 +418,28 @@ func Test_gridService_Leveling(t *testing.T) {
 			wantCancelHistory: []interface{}{
 				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 				"order-code-001",
 				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 				"order-code-002",
 				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
 				"order-code-005",
 				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
@@ -458,7 +458,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
-				Width:         2,
+				BaseWidth:     2,
 				Quantity:      4,
 				NumberOfGrids: 1,
 				TimeRanges: []TimeRange{{
@@ -478,7 +478,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
-				Width:         2,
+				BaseWidth:     2,
 				Quantity:      4,
 				NumberOfGrids: 0,
 				TimeRanges: []TimeRange{{
@@ -508,7 +508,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
-				Width:         2,
+				BaseWidth:     2,
 				Quantity:      4,
 				NumberOfGrids: 5,
 				TimeRanges: []TimeRange{{
@@ -527,7 +527,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
 				Runnable:      true,
-				Width:         2,
+				BaseWidth:     2,
 				Quantity:      4,
 				NumberOfGrids: 0,
 				TimeRanges: []TimeRange{{
@@ -549,7 +549,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				EntrySide: SideBuy,
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
@@ -580,7 +580,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				EntrySide: SideBuy,
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
@@ -605,7 +605,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				EntrySide: SideBuy,
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
@@ -634,7 +634,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				EntrySide: SideBuy,
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
@@ -664,7 +664,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				EntrySide: SideBuy,
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					Width:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
@@ -710,14 +710,16 @@ func Test_newGridService(t *testing.T) {
 	kabusAPI := &testKabusAPI{}
 	orderService := &testOrderService{}
 	strategyStore := &testStrategyStore{}
+	fourPriceStore := &testFourPriceStore{}
 	want1 := &gridService{
-		clock:         clock,
-		tick:          tick,
-		kabusAPI:      kabusAPI,
-		orderService:  orderService,
-		strategyStore: strategyStore,
+		clock:          clock,
+		tick:           tick,
+		kabusAPI:       kabusAPI,
+		orderService:   orderService,
+		strategyStore:  strategyStore,
+		fourPriceStore: fourPriceStore,
 	}
-	got1 := newGridService(clock, tick, kabusAPI, orderService, strategyStore)
+	got1 := newGridService(clock, tick, kabusAPI, orderService, strategyStore, fourPriceStore)
 	if !reflect.DeepEqual(want1, got1) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want1, got1)
 	}
@@ -726,39 +728,85 @@ func Test_newGridService(t *testing.T) {
 func Test_gridService_width(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name  string
-		clock *testClock
-		arg1  *Strategy
-		want1 int
-		want2 error
+		name           string
+		clock          *testClock
+		fourPriceStore *testFourPriceStore
+		arg1           *Strategy
+		want1          int
+		want2          error
 	}{
 		{name: "引数がnilならエラー",
-			clock: &testClock{},
-			arg1:  nil,
-			want1: 0,
-			want2: ErrNilArgument},
-		{name: "typeがunspecifiedならwidthをそのまま返す",
-			clock: &testClock{},
+			clock:          &testClock{},
+			fourPriceStore: &testFourPriceStore{},
+			arg1:           nil,
+			want1:          0,
+			want2:          ErrNilArgument},
+		{name: "動的グリッドがすべて無効なら、基準グリッド幅が返される",
+			clock:          &testClock{},
+			fourPriceStore: &testFourPriceStore{},
 			arg1: &Strategy{
 				GridStrategy: GridStrategy{
-					Width:    2,
-					GridType: GridTypeUnspecified,
+					BaseWidth:          4,
+					DynamicGridPrevDay: DynamicGridPrevDay{Valid: false},
+					DynamicGridMinMax:  DynamicGridMinMax{Valid: false},
 				},
 			},
-			want1: 2,
+			want1: 4,
 			want2: nil},
-		{name: "typeがstaticならwidthをそのまま返す",
-			clock: &testClock{},
+		{name: "DynamicGridPrevDayが有効で、四本値が取得できれば始値と終値の差の絶対値を使ってグリッド幅を計算できる",
+			clock:          &testClock{},
+			fourPriceStore: &testFourPriceStore{GetLastBySymbolCodeAndExchange1: &FourPrice{Open: 100, Close: 200}},
 			arg1: &Strategy{
 				GridStrategy: GridStrategy{
-					Width:    2,
-					GridType: GridTypeStatic,
+					BaseWidth: 4,
+					DynamicGridPrevDay: DynamicGridPrevDay{
+						Valid:         true,
+						Rate:          0.8,
+						NumberOfGrids: 6,
+						Rounding:      RoundingRound,
+					},
+					DynamicGridMinMax: DynamicGridMinMax{Valid: false},
 				},
 			},
-			want1: 2,
+			want1: 13,
 			want2: nil},
-		{name: "typeがDynamicMinMaxならwidthを計算して返す",
-			clock: &testClock{Now1: time.Date(2022, 1, 14, 11, 0, 0, 0, time.Local)},
+		{name: "DynamicGridPrevDayが有効で、四本値が取得できれば始値＞終値でも差の絶対値を使ってグリッド幅を計算できる",
+			clock:          &testClock{},
+			fourPriceStore: &testFourPriceStore{GetLastBySymbolCodeAndExchange1: &FourPrice{Open: 200, Close: 100}},
+			arg1: &Strategy{
+				GridStrategy: GridStrategy{
+					BaseWidth: 4,
+					DynamicGridPrevDay: DynamicGridPrevDay{
+						Valid:         true,
+						Rate:          0.8,
+						NumberOfGrids: 4,
+						Rounding:      RoundingRound,
+					},
+					DynamicGridMinMax: DynamicGridMinMax{Valid: false},
+				},
+			},
+			want1: 20,
+			want2: nil},
+		{name: "DynamicGridPrevDayが有効で、四本値が取得できなければ基準価格が返される",
+			clock:          &testClock{},
+			fourPriceStore: &testFourPriceStore{GetLastBySymbolCodeAndExchange2: ErrNoData},
+			arg1: &Strategy{
+				GridStrategy: GridStrategy{
+					BaseWidth: 4,
+					DynamicGridPrevDay: DynamicGridPrevDay{
+						Valid:         true,
+						Rate:          0.8,
+						NumberOfGrids: 4,
+						Rounding:      RoundingRound,
+					},
+					DynamicGridMinMax: DynamicGridMinMax{Valid: false},
+				},
+			},
+			want1: 4,
+			want2: nil},
+		{name: "DynamicGridMinMaxが有効ならwidthを計算して返す",
+			clock:          &testClock{Now1: time.Date(2022, 1, 14, 11, 0, 0, 0, time.Local)},
+			fourPriceStore: &testFourPriceStore{},
 			arg1: &Strategy{
 				TickGroup:           TickGroupTopix100,
 				MinContractPrice:    18125,
@@ -766,9 +814,9 @@ func Test_gridService_width(t *testing.T) {
 				MaxContractPrice:    18275,
 				MaxContractDateTime: time.Date(2022, 1, 14, 9, 10, 0, 0, time.Local),
 				GridStrategy: GridStrategy{
-					Width:    2,
-					GridType: GridTypeDynamicMinMax,
+					BaseWidth: 2,
 					DynamicGridMinMax: DynamicGridMinMax{
+						Valid:     true,
 						Divide:    5,
 						Rounding:  RoundingCeil,
 						Operation: OperationPlus,
@@ -781,7 +829,7 @@ func Test_gridService_width(t *testing.T) {
 			},
 			want1: 8,
 			want2: nil},
-		{name: "typeがDynamicMinMaxでも、約定高値と約定安値が現在時刻のグリッドの時間外ならグリッド幅を返す",
+		{name: "DynamicGridMinMaxが有効でも、約定高値と約定安値が現在時刻のグリッドの時間外ならグリッド幅を返す",
 			clock: &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
 			arg1: &Strategy{
 				TickGroup:           TickGroupTopix100,
@@ -790,9 +838,9 @@ func Test_gridService_width(t *testing.T) {
 				MaxContractPrice:    18275,
 				MaxContractDateTime: time.Date(2022, 1, 14, 9, 10, 0, 0, time.Local),
 				GridStrategy: GridStrategy{
-					Width:    2,
-					GridType: GridTypeDynamicMinMax,
+					BaseWidth: 2,
 					DynamicGridMinMax: DynamicGridMinMax{
+						Valid:     true,
 						Divide:    5,
 						Rounding:  RoundingCeil,
 						Operation: OperationPlus,
@@ -805,8 +853,9 @@ func Test_gridService_width(t *testing.T) {
 			},
 			want1: 2,
 			want2: nil},
-		{name: "typeがDynamicMinMaxでも、約定高値が現在時刻のグリッドの時間外ならグリッド幅を返す",
-			clock: &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
+		{name: "DynamicGridMinMaxが有効でも、約定高値が現在時刻のグリッドの時間外ならグリッド幅を返す",
+			clock:          &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
+			fourPriceStore: &testFourPriceStore{},
 			arg1: &Strategy{
 				TickGroup:           TickGroupTopix100,
 				MinContractPrice:    18125,
@@ -814,9 +863,9 @@ func Test_gridService_width(t *testing.T) {
 				MaxContractPrice:    18275,
 				MaxContractDateTime: time.Date(2022, 1, 14, 9, 10, 0, 0, time.Local),
 				GridStrategy: GridStrategy{
-					Width:    2,
-					GridType: GridTypeDynamicMinMax,
+					BaseWidth: 2,
 					DynamicGridMinMax: DynamicGridMinMax{
+						Valid:     true,
 						Divide:    5,
 						Rounding:  RoundingCeil,
 						Operation: OperationPlus,
@@ -829,8 +878,9 @@ func Test_gridService_width(t *testing.T) {
 			},
 			want1: 2,
 			want2: nil},
-		{name: "typeがDynamicMinMaxでも、約定安値が現在時刻のグリッドの時間外ならグリッド幅を返す",
-			clock: &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
+		{name: "DynamicGridMinMaxが有効でも、約定安値が現在時刻のグリッドの時間外ならグリッド幅を返す",
+			clock:          &testClock{Now1: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local)},
+			fourPriceStore: &testFourPriceStore{},
 			arg1: &Strategy{
 				TickGroup:           TickGroupTopix100,
 				MinContractPrice:    18125,
@@ -838,9 +888,9 @@ func Test_gridService_width(t *testing.T) {
 				MaxContractPrice:    18275,
 				MaxContractDateTime: time.Date(2022, 1, 14, 12, 30, 0, 0, time.Local),
 				GridStrategy: GridStrategy{
-					Width:    2,
-					GridType: GridTypeDynamicMinMax,
+					BaseWidth: 2,
 					DynamicGridMinMax: DynamicGridMinMax{
+						Valid:     true,
 						Divide:    5,
 						Rounding:  RoundingCeil,
 						Operation: OperationPlus,
@@ -859,7 +909,7 @@ func Test_gridService_width(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			service := &gridService{tick: &tick{}, clock: test.clock}
+			service := &gridService{tick: &tick{}, clock: test.clock, fourPriceStore: test.fourPriceStore}
 			got1, got2 := service.width(test.arg1)
 			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)

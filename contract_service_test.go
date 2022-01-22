@@ -1622,15 +1622,15 @@ func Test_contractService_Confirm_issue29(t *testing.T) {
 		},
 		GridStrategy: GridStrategy{
 			Runnable:      true,
-			Width:         1,
+			BaseWidth:     1,
 			Quantity:      3,
 			NumberOfGrids: 3,
 			TimeRanges: []TimeRange{
 				{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local)},
 				{Start: time.Date(0, 1, 1, 12, 30, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 58, 0, 0, time.Local)},
 			},
-			GridType: GridTypeDynamicMinMax,
 			DynamicGridMinMax: DynamicGridMinMax{
+				Valid:     true,
 				Divide:    6,
 				Rounding:  RoundingFloor,
 				Operation: OperationPlus,

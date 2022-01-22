@@ -75,13 +75,13 @@ type Account struct {
 
 // GridStrategy - グリッド戦略
 type GridStrategy struct {
-	Runnable          bool              // 実行可能かどうか
-	Width             int               // グリッド幅(tick数)
-	Quantity          float64           // 1グリッドに乗せる数量
-	NumberOfGrids     int               // 指値注文を入れておくグリッドの本数
-	TimeRanges        []TimeRange       // 戦略動作時刻範囲
-	GridType          GridType          // グリッド戦略種別
-	DynamicGridMinMax DynamicGridMinMax // 最小・最大約定値からの動的グリッド
+	Runnable           bool               // 実行可能かどうか
+	Quantity           float64            // 1グリッドに乗せる数量
+	BaseWidth          int                // 基準となるグリッド幅(tick数)
+	NumberOfGrids      int                // 指値注文を入れておくグリッドの本数
+	TimeRanges         []TimeRange        // 戦略動作時刻範囲
+	DynamicGridPrevDay DynamicGridPrevDay // 前日の価格幅からの動的なグリッド幅
+	DynamicGridMinMax  DynamicGridMinMax  // 最小・最大約定値からの動的なグリッド幅
 }
 
 // IsRunnable - グリッド戦略が実行可能かどうか
@@ -99,16 +99,40 @@ func (v *GridStrategy) IsRunnable(now time.Time) bool {
 	return false
 }
 
-// DynamicGridMinMax - 最小・最大約定値からの動的グリッド
+// DynamicGridPrevDay - 前日の価格幅からの動的なグリッド幅
+type DynamicGridPrevDay struct {
+	Valid         bool     // 有効・無効
+	Rate          float64  // 差の何%を計算の対象にするか(100% = 1)
+	NumberOfGrids int      // 差に何本のグリッドを置くことを考えるか
+	Rounding      Rounding // 端数処理
+}
+
+// width - 計算後グリッド幅
+// diffは単純な価格差ではなくtick数
+func (v *DynamicGridPrevDay) width(width int, diff float64) int {
+	if !v.Valid || v.NumberOfGrids == 0 {
+		return width
+	}
+
+	w := int(v.Rounding.Calc(diff * v.Rate / float64(v.NumberOfGrids)))
+	if w < 1 {
+		return 1
+	}
+	return w
+}
+
+// DynamicGridMinMax - // 最小・最大約定値からの動的なグリッド幅
 type DynamicGridMinMax struct {
+	Valid     bool      // 有効・無効
 	Divide    float64   // 最低・最大の差をDivideで割った値を加算する。1ならそのまま、5なら差の1/5を加算
 	Rounding  Rounding  // 端数処理
 	Operation Operation // 演算子
 }
 
-// Width - 計算後グリッド幅
-func (v *DynamicGridMinMax) Width(width int, diff int) int {
-	if v.Divide == 0 {
+// width - 計算後グリッド幅
+// diffは単純な価格差ではなくtick数
+func (v *DynamicGridMinMax) width(width int, diff int) int {
+	if !v.Valid || v.Divide == 0 {
 		return width
 	}
 
@@ -216,4 +240,10 @@ func (v *TimeRange) In(target time.Time) bool {
 	} else {
 		return !t.Before(start) || t.Before(end)
 	}
+}
+
+// SymbolKey - 一意に特定できる銘柄情報
+type SymbolKey struct {
+	SymbolCode string   // 銘柄コード
+	Exchange   Exchange // 市場
 }
