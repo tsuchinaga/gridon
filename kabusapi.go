@@ -2,7 +2,6 @@ package gridon
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -393,8 +392,6 @@ func (k *kabusAPI) GetFourPrice(symbolCode string, exchange Exchange) (*FourPric
 	if err != nil {
 		return nil, err
 	}
-
-	log.Println(board)
 
 	return &FourPrice{
 		SymbolCode: symbolCode,
