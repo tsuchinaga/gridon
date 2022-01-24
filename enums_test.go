@@ -109,6 +109,9 @@ func Test_Operation_Calc(t *testing.T) {
 		{name: "-なら減算", operation: OperationMinus, arg1: 100, arg2: 0.1, want1: 99.9},
 		{name: "*なら積算", operation: OperationMultiple, arg1: 100, arg2: 0.1, want1: 10},
 		{name: "/なら除算", operation: OperationDived, arg1: 100, arg2: 0.1, want1: 1000},
+		{name: "minなら小さいほうを返す", operation: OperationMin, arg1: 100, arg2: 50, want1: 50},
+		{name: "maxなら大きいほうを返す", operation: OperationMax, arg1: 100, arg2: 50, want1: 100},
+		{name: "overwriteなら後の方を返す", operation: OperationOverwrite, arg1: 100, arg2: 50, want1: 50},
 	}
 
 	for _, test := range tests {

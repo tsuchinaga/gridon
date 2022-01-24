@@ -520,6 +520,16 @@ func Test_DynamicGridMinMax_width(t *testing.T) {
 			arg1:  2,
 			arg2:  10,
 			want1: 10},
+		{name: "1未満になるなら1を返す",
+			dynamicGridMinMax: DynamicGridMinMax{
+				Valid:     true,
+				Divide:    10,
+				Rounding:  RoundingFloor,
+				Operation: OperationMin,
+			},
+			arg1:  2,
+			arg2:  5,
+			want1: 1},
 	}
 
 	for _, test := range tests {
@@ -540,7 +550,7 @@ func Test_DynamicGridPrevDay_width(t *testing.T) {
 		name               string
 		dynamicGridPrevDay DynamicGridPrevDay
 		arg1               int
-		arg2               float64
+		arg2               int
 		want1              int
 	}{
 		{name: "無効ならwidthを返す",
@@ -548,7 +558,8 @@ func Test_DynamicGridPrevDay_width(t *testing.T) {
 				Valid:         false,
 				Rate:          1,
 				NumberOfGrids: 6,
-				Rounding:      RoundingRound},
+				Rounding:      RoundingRound,
+				Operation:     OperationOverwrite},
 			arg1:  4,
 			arg2:  50,
 			want1: 4},
@@ -557,7 +568,8 @@ func Test_DynamicGridPrevDay_width(t *testing.T) {
 				Valid:         true,
 				Rate:          1,
 				NumberOfGrids: 0,
-				Rounding:      RoundingRound},
+				Rounding:      RoundingRound,
+				Operation:     OperationOverwrite},
 			arg1:  4,
 			arg2:  50,
 			want1: 4},
@@ -566,7 +578,8 @@ func Test_DynamicGridPrevDay_width(t *testing.T) {
 				Valid:         true,
 				Rate:          0.05,
 				NumberOfGrids: 6,
-				Rounding:      RoundingRound},
+				Rounding:      RoundingRound,
+				Operation:     OperationOverwrite},
 			arg1:  4,
 			arg2:  50,
 			want1: 1},
@@ -575,7 +588,8 @@ func Test_DynamicGridPrevDay_width(t *testing.T) {
 				Valid:         true,
 				Rate:          0.8,
 				NumberOfGrids: 6,
-				Rounding:      RoundingRound},
+				Rounding:      RoundingRound,
+				Operation:     OperationOverwrite},
 			arg1:  4,
 			arg2:  50,
 			want1: 7},

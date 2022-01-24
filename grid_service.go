@@ -213,7 +213,7 @@ func (s *gridService) width(strategy *Strategy) (int, error) {
 	if strategy.GridStrategy.DynamicGridPrevDay.Valid {
 		fp, err := s.fourPriceStore.GetLastBySymbolCodeAndExchange(strategy.SymbolCode, strategy.Exchange)
 		if err == nil {
-			w = strategy.GridStrategy.DynamicGridPrevDay.width(w, float64(s.tick.Ticks(strategy.TickGroup, fp.Open, fp.Close)))
+			w = strategy.GridStrategy.DynamicGridPrevDay.width(w, s.tick.Ticks(strategy.TickGroup, fp.Open, fp.Close))
 		}
 	}
 

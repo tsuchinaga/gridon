@@ -101,20 +101,21 @@ func (v *GridStrategy) IsRunnable(now time.Time) bool {
 
 // DynamicGridPrevDay - 前日の価格幅からの動的なグリッド幅
 type DynamicGridPrevDay struct {
-	Valid         bool     // 有効・無効
-	Rate          float64  // 差の何%を計算の対象にするか(100% = 1)
-	NumberOfGrids int      // 差に何本のグリッドを置くことを考えるか
-	Rounding      Rounding // 端数処理
+	Valid         bool      // 有効・無効
+	Rate          float64   // 差の何%を計算の対象にするか(100% = 1)
+	NumberOfGrids int       // 差に何本のグリッドを置くことを考えるか
+	Rounding      Rounding  // 端数処理
+	Operation     Operation // 演算子
 }
 
 // width - 計算後グリッド幅
 // diffは単純な価格差ではなくtick数
-func (v *DynamicGridPrevDay) width(width int, diff float64) int {
+func (v *DynamicGridPrevDay) width(width int, diff int) int {
 	if !v.Valid || v.NumberOfGrids == 0 {
 		return width
 	}
 
-	w := int(v.Rounding.Calc(diff * v.Rate / float64(v.NumberOfGrids)))
+	w := int(v.Operation.Calc(float64(width), v.Rounding.Calc(float64(diff)*v.Rate/float64(v.NumberOfGrids))))
 	if w < 1 {
 		return 1
 	}
@@ -136,7 +137,11 @@ func (v *DynamicGridMinMax) width(width int, diff int) int {
 		return width
 	}
 
-	return int(v.Operation.Calc(float64(width), v.Rounding.Calc(float64(diff)/v.Divide)))
+	w := int(v.Operation.Calc(float64(width), v.Rounding.Calc(float64(diff)/v.Divide)))
+	if w < 1 {
+		return 1
+	}
+	return w
 }
 
 // RebalanceStrategy - リバランス戦略
