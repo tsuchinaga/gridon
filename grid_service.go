@@ -1,7 +1,5 @@
 package gridon
 
-import "math"
-
 // newGridService - 新しいグリッドサービスの取得
 func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService, strategyStore IStrategyStore, fourPriceStore IFourPriceStore) IGridService {
 	return &gridService{
@@ -215,7 +213,7 @@ func (s *gridService) width(strategy *Strategy) (int, error) {
 	if strategy.GridStrategy.DynamicGridPrevDay.Valid {
 		fp, err := s.fourPriceStore.GetLastBySymbolCodeAndExchange(strategy.SymbolCode, strategy.Exchange)
 		if err == nil {
-			w = strategy.GridStrategy.DynamicGridPrevDay.width(w, math.Abs(fp.Open-fp.Close))
+			w = strategy.GridStrategy.DynamicGridPrevDay.width(w, float64(s.tick.Ticks(strategy.TickGroup, fp.Open, fp.Close)))
 		}
 	}
 
