@@ -111,15 +111,6 @@ const (
 	TickGroupOther       TickGroup = "other"
 )
 
-// GridType - グリッド戦略種別
-type GridType string
-
-const (
-	GridTypeUnspecified   GridType = ""
-	GridTypeStatic        GridType = "static"  // 静的、動的な変更なし
-	GridTypeDynamicMinMax GridType = "min_max" // 最小・最大約定値からの動的グリッド
-)
-
 // Rounding - 端数処理
 type Rounding string
 
