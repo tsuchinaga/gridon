@@ -402,7 +402,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				Code: "strategy-code-001",
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					BaseWidth:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges: []TimeRange{{
@@ -415,7 +415,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					Code: "strategy-code-001",
 					GridStrategy: GridStrategy{
 						Runnable:      true,
-						BaseWidth:         2,
+						BaseWidth:     2,
 						Quantity:      4,
 						NumberOfGrids: 5,
 						TimeRanges: []TimeRange{{
@@ -442,7 +442,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				Code: "strategy-code-001",
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					BaseWidth:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
@@ -453,7 +453,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					Code: "strategy-code-001",
 					GridStrategy: GridStrategy{
 						Runnable:      true,
-						BaseWidth:         2,
+						BaseWidth:     2,
 						Quantity:      4,
 						NumberOfGrids: 5,
 						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
@@ -463,7 +463,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					Code: "strategy-code-001",
 					GridStrategy: GridStrategy{
 						Runnable:      true,
-						BaseWidth:         2,
+						BaseWidth:     2,
 						Quantity:      4,
 						NumberOfGrids: 5,
 						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
@@ -473,7 +473,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					Code: "strategy-code-001",
 					GridStrategy: GridStrategy{
 						Runnable:      true,
-						BaseWidth:         2,
+						BaseWidth:     2,
 						Quantity:      4,
 						NumberOfGrids: 5,
 						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
@@ -483,7 +483,7 @@ func Test_gridService_Leveling(t *testing.T) {
 					Code: "strategy-code-001",
 					GridStrategy: GridStrategy{
 						Runnable:      true,
-						BaseWidth:         2,
+						BaseWidth:     2,
 						Quantity:      4,
 						NumberOfGrids: 5,
 						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
@@ -505,7 +505,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				Code: "strategy-code-001",
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					BaseWidth:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 1,
 					TimeRanges: []TimeRange{{
@@ -527,7 +527,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				Code: "strategy-code-001",
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					BaseWidth:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 0,
 					TimeRanges: []TimeRange{{
@@ -559,7 +559,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				Code: "strategy-code-001",
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					BaseWidth:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges: []TimeRange{{
@@ -580,7 +580,7 @@ func Test_gridService_Leveling(t *testing.T) {
 				Code: "strategy-code-001",
 				GridStrategy: GridStrategy{
 					Runnable:      true,
-					BaseWidth:         2,
+					BaseWidth:     2,
 					Quantity:      4,
 					NumberOfGrids: 0,
 					TimeRanges: []TimeRange{{
