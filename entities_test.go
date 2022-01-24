@@ -295,3 +295,26 @@ func Test_Position_LeaveQuantity(t *testing.T) {
 		})
 	}
 }
+
+func Test_Strategy_IsRunnable(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		strategy *Strategy
+		want1    bool
+	}{
+		{name: "実行不可ならfalse", strategy: &Strategy{Runnable: false}, want1: false},
+		{name: "実行可能ならtrue", strategy: &Strategy{Runnable: true}, want1: true},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1 := test.strategy.IsRunnable()
+			if !reflect.DeepEqual(test.want1, got1) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want1, got1)
+			}
+		})
+	}
+}

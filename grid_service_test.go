@@ -298,7 +298,7 @@ func Test_gridService_Leveling(t *testing.T) {
 			tick:          &tick{},
 			arg1:          nil,
 			want1:         ErrNilArgument},
-		{name: "戦略が実行不可なら何もせず終了",
+		{name: "戦略自体が実行不可なら何もせず終了",
 			clock: &testClock{
 				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
 				IsTradingTime1: true},
@@ -306,18 +306,35 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1:          &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}},
+			arg1:          &Strategy{Code: "strategy-code-001", Runnable: false},
+			want1:         nil},
+		{name: "グリッド戦略が実行不可なら何もせず終了",
+			clock: &testClock{
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
+				IsTradingTime1: true},
+			orderService:  &testOrderService{},
+			kabusAPI:      &testKabusAPI{},
+			strategyStore: &testStrategyStore{},
+			tick:          &tick{},
+			arg1:          &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}, Runnable: true},
 			want1:         nil},
 		{name: "取引時間でないなら何もせずに終了",
 			clock: &testClock{
-				Now1:           time.Date(2021, 11, 5, 8, 0, 0, 0, time.Local),
+				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
 				IsTradingTime1: false},
 			orderService:  &testOrderService{},
 			kabusAPI:      &testKabusAPI{},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1:          &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{Runnable: false}},
-			want1:         nil},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
+			want1: nil},
 		{name: "注文一覧の取得に失敗したらエラー",
 			clock: &testClock{
 				Now1:           time.Date(2021, 11, 5, 10, 0, 0, 0, time.Local),
@@ -326,11 +343,14 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable: true,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1: ErrUnknown},
 		{name: "基準価格取得に失敗したらエラー",
 			clock: &testClock{
@@ -340,11 +360,14 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol2: ErrUnknown},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable: true,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1: ErrUnknown},
 		{name: "widthが0ならエラー",
 			clock: &testClock{
@@ -354,11 +377,14 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable: true,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable: true,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1: ErrZeroGridWidth},
 		{name: "グリッドの範囲外の注文の取消で失敗したらエラー",
 			clock: &testClock{
@@ -372,26 +398,30 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable:      true,
-				Width:         2,
-				Quantity:      4,
-				NumberOfGrids: 5,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-			}},
-			want1: ErrUnknown,
-			wantCancelHistory: []interface{}{
-				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
 					Runnable:      true,
 					Width:         2,
 					Quantity:      4,
 					NumberOfGrids: 5,
 					TimeRanges: []TimeRange{{
 						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-				}},
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
+			want1: ErrUnknown,
+			wantCancelHistory: []interface{}{
+				&Strategy{
+					Code: "strategy-code-001",
+					GridStrategy: GridStrategy{
+						Runnable:      true,
+						Width:         2,
+						Quantity:      4,
+						NumberOfGrids: 5,
+						TimeRanges: []TimeRange{{
+							Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+							End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+					Runnable: true},
 				"order-code-001"}},
 		{name: "グリッドに乗っていない注文の取消",
 			clock: &testClock{
@@ -408,41 +438,56 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable:      true,
-				Width:         2,
-				Quantity:      4,
-				NumberOfGrids: 5,
-				TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable:      true,
+					Width:         2,
+					Quantity:      4,
+					NumberOfGrids: 5,
+					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1: nil,
 			wantCancelHistory: []interface{}{
-				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-					Runnable:      true,
-					Width:         2,
-					Quantity:      4,
-					NumberOfGrids: 5,
-					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+				&Strategy{
+					Code: "strategy-code-001",
+					GridStrategy: GridStrategy{
+						Runnable:      true,
+						Width:         2,
+						Quantity:      4,
+						NumberOfGrids: 5,
+						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+					Runnable: true},
 				"order-code-001",
-				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-					Runnable:      true,
-					Width:         2,
-					Quantity:      4,
-					NumberOfGrids: 5,
-					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+				&Strategy{
+					Code: "strategy-code-001",
+					GridStrategy: GridStrategy{
+						Runnable:      true,
+						Width:         2,
+						Quantity:      4,
+						NumberOfGrids: 5,
+						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+					Runnable: true},
 				"order-code-002",
-				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-					Runnable:      true,
-					Width:         2,
-					Quantity:      4,
-					NumberOfGrids: 5,
-					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+				&Strategy{
+					Code: "strategy-code-001",
+					GridStrategy: GridStrategy{
+						Runnable:      true,
+						Width:         2,
+						Quantity:      4,
+						NumberOfGrids: 5,
+						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+					Runnable: true},
 				"order-code-005",
-				&Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-					Runnable:      true,
-					Width:         2,
-					Quantity:      4,
-					NumberOfGrids: 5,
-					TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}}},
+				&Strategy{
+					Code: "strategy-code-001",
+					GridStrategy: GridStrategy{
+						Runnable:      true,
+						Width:         2,
+						Quantity:      4,
+						NumberOfGrids: 5,
+						TimeRanges:    []TimeRange{{Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local), End: time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+					Runnable: true},
 				"order-code-006"}},
 		{name: "グリッドの範囲外の指値注文がなければ取消は実行しない",
 			clock: &testClock{
@@ -456,15 +501,17 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable:      true,
-				Width:         2,
-				Quantity:      4,
-				NumberOfGrids: 1,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-			}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable:      true,
+					Width:         2,
+					Quantity:      4,
+					NumberOfGrids: 1,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1:             nil,
 			wantCancelHistory: nil},
 		{name: "グリッド本数が0本の場合、何もせずに終了",
@@ -476,15 +523,17 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable:      true,
-				Width:         2,
-				Quantity:      4,
-				NumberOfGrids: 0,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-			}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable:      true,
+					Width:         2,
+					Quantity:      4,
+					NumberOfGrids: 0,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1:             nil,
 			wantCancelHistory: nil},
 		{name: "乗せたいグリッドにすでに注文があり、不足分がなければ、注文しない",
@@ -506,15 +555,17 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable:      true,
-				Width:         2,
-				Quantity:      4,
-				NumberOfGrids: 5,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-			}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable:      true,
+					Width:         2,
+					Quantity:      4,
+					NumberOfGrids: 5,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1: nil},
 		{name: "グリッド本数が0本の場合、何もせずに終了",
 			clock: &testClock{
@@ -525,15 +576,17 @@ func Test_gridService_Leveling(t *testing.T) {
 			kabusAPI:      &testKabusAPI{GetSymbol1: &Symbol{Code: "1475", Exchange: ExchangeToushou, TradingUnit: 1, CurrentPrice: 2100, CurrentPriceDateTime: time.Date(2021, 11, 5, 9, 0, 0, 0, time.Local), BidPrice: 2101, AskPrice: 2099}},
 			strategyStore: &testStrategyStore{},
 			tick:          &tick{},
-			arg1: &Strategy{Code: "strategy-code-001", GridStrategy: GridStrategy{
-				Runnable:      true,
-				Width:         2,
-				Quantity:      4,
-				NumberOfGrids: 0,
-				TimeRanges: []TimeRange{{
-					Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-					End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-			}},
+			arg1: &Strategy{
+				Code: "strategy-code-001",
+				GridStrategy: GridStrategy{
+					Runnable:      true,
+					Width:         2,
+					Quantity:      4,
+					NumberOfGrids: 0,
+					TimeRanges: []TimeRange{{
+						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1: nil},
 		{name: "グリッドに全く注文がなければ、各グリッドに必要数の注文をのせる",
 			clock: &testClock{
@@ -554,8 +607,8 @@ func Test_gridService_Leveling(t *testing.T) {
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
 						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-				}},
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1: nil,
 			wantEntryLimitHistory: []interface{}{
 				"strategy-code-001", 2098.0, 4.0,
@@ -585,8 +638,8 @@ func Test_gridService_Leveling(t *testing.T) {
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
 						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-				}},
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1:                 ErrUnknown,
 			wantEntryLimitHistory: []interface{}{"strategy-code-001", 2098.0, 4.0},
 			wantExitLimitHistory:  []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderNewest}},
@@ -610,8 +663,8 @@ func Test_gridService_Leveling(t *testing.T) {
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
 						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-				}},
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1:                ErrUnknown,
 			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 4.0, SortOrderNewest}},
 		{name: "乗せたいグリッドにすでに注文があれば、不足分だけを注文する",
@@ -639,8 +692,8 @@ func Test_gridService_Leveling(t *testing.T) {
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
 						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-				}},
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1:                ErrUnknown,
 			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 2.0, SortOrderNewest}},
 		{name: "基準価格のグリッドに注文が残っていたら、隣のグリッドに乗せる数を減らす",
@@ -669,8 +722,8 @@ func Test_gridService_Leveling(t *testing.T) {
 					NumberOfGrids: 2,
 					TimeRanges: []TimeRange{{
 						Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.Local),
-						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}},
-				}},
+						End:   time.Date(0, 1, 1, 14, 55, 0, 0, time.Local)}}},
+				Runnable: true},
 			want1:                ErrUnknown,
 			wantExitLimitHistory: []interface{}{"strategy-code-001", 2102.0, 1.0, SortOrderNewest}},
 	}
