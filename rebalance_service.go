@@ -30,6 +30,9 @@ func (s *rebalanceService) Rebalance(strategy *Strategy) error {
 	if strategy == nil {
 		return ErrNilArgument
 	}
+	if !strategy.IsRunnable() {
+		return nil
+	}
 
 	if !strategy.RebalanceStrategy.IsRunnable(s.clock.Now()) {
 		return nil

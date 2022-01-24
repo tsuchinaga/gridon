@@ -29,6 +29,7 @@ type Strategy struct {
 	CancelStrategy       CancelStrategy    // 全取消戦略
 	ExitStrategy         ExitStrategy      // 全エグジット戦略
 	Account              Account           // 口座情報
+	Runnable             bool              // 実行可能かどうか
 }
 
 func (e *Strategy) String() string {
@@ -37,6 +38,10 @@ func (e *Strategy) String() string {
 	} else {
 		return string(b)
 	}
+}
+
+func (e *Strategy) IsRunnable() bool {
+	return e.Runnable
 }
 
 // Order - 注文
