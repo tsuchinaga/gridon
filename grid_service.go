@@ -1,13 +1,14 @@
 package gridon
 
 // newGridService - 新しいグリッドサービスの取得
-func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService, strategyStore IStrategyStore) IGridService {
+func newGridService(clock IClock, tick ITick, kabusAPI IKabusAPI, orderService IOrderService, strategyStore IStrategyStore, fourPriceStore IFourPriceStore) IGridService {
 	return &gridService{
-		clock:         clock,
-		tick:          tick,
-		kabusAPI:      kabusAPI,
-		orderService:  orderService,
-		strategyStore: strategyStore,
+		clock:          clock,
+		tick:           tick,
+		kabusAPI:       kabusAPI,
+		orderService:   orderService,
+		strategyStore:  strategyStore,
+		fourPriceStore: fourPriceStore,
 	}
 }
 
@@ -18,11 +19,12 @@ type IGridService interface {
 
 // gridService - グリッドサービス
 type gridService struct {
-	clock         IClock
-	tick          ITick
-	kabusAPI      IKabusAPI
-	orderService  IOrderService
-	strategyStore IStrategyStore
+	clock          IClock
+	tick           ITick
+	kabusAPI       IKabusAPI
+	orderService   IOrderService
+	strategyStore  IStrategyStore
+	fourPriceStore IFourPriceStore
 }
 
 // Leveling - グリッドの整地
@@ -206,30 +208,32 @@ func (s *gridService) width(strategy *Strategy) (int, error) {
 		return 0, ErrNilArgument
 	}
 
-	switch strategy.GridStrategy.GridType {
-	case GridTypeStatic:
-		return strategy.GridStrategy.Width, nil
-	case GridTypeDynamicMinMax:
-		now := s.clock.Now()
+	now := s.clock.Now()
 
-		// 高値と安値が現在のグリッド期間のものでないなら、グリッド幅をそのまま返す
-		for _, tr := range strategy.GridStrategy.TimeRanges {
-			// 現在のグリッド期間でないならスキップ
-			if !tr.In(now) {
-				continue
-			}
+	w := strategy.GridStrategy.BaseWidth
 
-			// 現在のグリッド期間に高値か安値のどちらかが入っていなければ約定高値安値の動的グリッドは計算できないため、グリッド幅をそのまま返す
-			if !tr.In(strategy.MinContractDateTime) || !tr.In(strategy.MaxContractDateTime) {
-				return strategy.GridStrategy.Width, nil
-			}
-
-			return strategy.GridStrategy.DynamicGridMinMax.Width(
-					strategy.GridStrategy.Width,
-					s.tick.Ticks(strategy.TickGroup, strategy.MinContractPrice, strategy.MaxContractPrice)),
-				nil
+	// 前日の価格幅からの動的なグリッド幅
+	if strategy.GridStrategy.DynamicGridPrevDay.Valid {
+		fp, err := s.fourPriceStore.GetLastBySymbolCodeAndExchange(strategy.SymbolCode, strategy.Exchange)
+		if err == nil {
+			w = strategy.GridStrategy.DynamicGridPrevDay.width(w, s.tick.Ticks(strategy.TickGroup, fp.Open, fp.Close))
 		}
 	}
 
-	return strategy.GridStrategy.Width, nil
+	// 最小・最大約定値からの動的なグリッド幅計算
+	if strategy.GridStrategy.DynamicGridMinMax.Valid {
+		// 高値と安値が現在のグリッド期間のものでないなら、グリッド幅をそのまま返す
+		for _, tr := range strategy.GridStrategy.TimeRanges {
+			// 現在のグリッド期間でないならスキップ
+			// 現在のグリッド期間に高値か安値のどちらかが入っていなければ約定高値安値の動的グリッドは計算できないため、グリッド幅をそのまま返す
+			if !tr.In(now) || !tr.In(strategy.MinContractDateTime) || !tr.In(strategy.MaxContractDateTime) {
+				continue
+			}
+
+			w = strategy.GridStrategy.DynamicGridMinMax.width(w, s.tick.Ticks(strategy.TickGroup, strategy.MinContractPrice, strategy.MaxContractPrice))
+			break
+		}
+	}
+
+	return w, nil
 }

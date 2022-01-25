@@ -111,15 +111,6 @@ const (
 	TickGroupOther       TickGroup = "other"
 )
 
-// GridType - グリッド戦略種別
-type GridType string
-
-const (
-	GridTypeUnspecified   GridType = ""
-	GridTypeStatic        GridType = "static"  // 静的、動的な変更なし
-	GridTypeDynamicMinMax GridType = "min_max" // 最小・最大約定値からの動的グリッド
-)
-
 // Rounding - 端数処理
 type Rounding string
 
@@ -148,11 +139,14 @@ func (e Rounding) Calc(v float64) float64 {
 type Operation string
 
 const (
-	OperationUnspecified Operation = ""  // 未指定
-	OperationPlus        Operation = "+" // 加算
-	OperationMinus       Operation = "-" // 減算
-	OperationMultiple    Operation = "*" // 積算
-	OperationDived       Operation = "/" // 除算
+	OperationUnspecified Operation = ""          // 未指定
+	OperationPlus        Operation = "+"         // 加算
+	OperationMinus       Operation = "-"         // 減算
+	OperationMultiple    Operation = "*"         // 積算
+	OperationDived       Operation = "/"         // 除算
+	OperationMin         Operation = "min"       // 最小
+	OperationMax         Operation = "max"       // 最大
+	OperationOverwrite   Operation = "overwrite" // 上書き
 )
 
 // Calc - 演算子の計算結果を返す
@@ -166,6 +160,12 @@ func (e Operation) Calc(a, b float64) float64 {
 		return a * b
 	case OperationDived:
 		return a / b
+	case OperationMin:
+		return math.Min(a, b)
+	case OperationMax:
+		return math.Max(a, b)
+	case OperationOverwrite:
+		return b
 	default:
 		return a + b
 	}
